@@ -522,3 +522,113 @@ PRD: LG SwapIt
 9. API 요구사항
 - 프론트와 백엔드가 어떤 주소로 어떤 데이터를 주고받을지 정리하는 부분
 ```
+
+## 12. PRD 영어 용어 빠른 설명
+
+PRD 목차에는 개발에서 자주 쓰는 영어 용어가 들어갑니다.
+아래 설명은 팀원들이 문서를 읽을 때 뜻을 바로 이해하기 위한 간단한 해설입니다.
+
+### 도메인 이름
+
+```txt
+Swap Request
+- 사용자가 가전 교환을 신청한 전체 건
+- 사진 업로드, 예상 보상가, 예약, 수거, 크레딧이 모두 이 신청에 연결됨
+
+Appliance
+- 사용자가 처리하려는 가전제품
+- 예: 냉장고, 세탁기, 에어컨, TV
+
+Inspection
+- 사진을 보고 제품 정보를 분석하는 단계
+- VLM/OCR 분석 결과를 저장함
+
+Pre-Valuation
+- 사진만 보고 계산한 예상 보상가 범위
+- 아직 확정 금액이 아님
+
+Booking
+- 수거 날짜와 시간을 예약하는 단계
+
+Tracking
+- 수거 진행 상황을 보여주는 단계
+
+Final Valuation
+- 수거 후 실제 검수/해체를 거쳐 확정한 최종 보상가
+
+Credit
+- 최종 보상가를 LG 크레딧으로 전환한 것
+
+Recycling
+- 수거한 가전이 재활용, 재판매, 부품화되는 결과
+
+Notification
+- 예약, 수거, 크레딧 확정 같은 상황을 알려주는 알림
+```
+
+### Swap Request Status
+
+Swap Request Status는 교환 신청이 지금 어느 단계에 있는지 나타내는 상태값입니다.
+백엔드는 이 상태값을 보고 다음에 어떤 화면을 보여줄지 판단합니다.
+
+```txt
+CREATED
+- 교환 신청이 처음 만들어진 상태
+
+PHOTO_UPLOADED
+- 사용자가 가전 사진을 업로드한 상태
+
+INSPECTION_COMPLETED
+- 사진 분석이 끝난 상태
+
+PRE_VALUATION_READY
+- 예상 보상가 범위가 준비된 상태
+
+PRE_VALUATION_ACCEPTED
+- 사용자가 예상 보상가 범위를 확인하고 다음 단계로 진행한 상태
+
+BOOKING_CONFIRMED
+- 수거 예약이 확정된 상태
+
+CREW_ASSIGNED
+- 수거 크루가 배정된 상태
+
+PICKUP_IN_PROGRESS
+- 수거가 진행 중인 상태
+
+PICKUP_COMPLETED
+- 가전 수거가 완료된 상태
+
+FINAL_VALUATION_READY
+- 수거 후 최종 보상가가 확정된 상태
+
+CREDIT_ISSUED
+- 최종 금액이 크레딧으로 발급된 상태
+
+COMPLETED
+- 전체 교환 과정이 끝난 상태
+
+CANCELLED
+- 사용자가 신청을 취소한 상태
+```
+
+### Credit Status
+
+Credit Status는 크레딧이 지금 어떤 상태인지 나타냅니다.
+
+```txt
+PENDING
+- 아직 확정 전, 대기 중인 상태
+
+CONFIRMED
+- 최종 크레딧 금액이 확정된 상태
+
+ISSUED
+- 크레딧이 실제로 발급된 상태
+
+USED
+- 사용자가 크레딧을 사용한 상태
+
+EXPIRED
+- 크레딧 사용 기한이 지난 상태
+```
