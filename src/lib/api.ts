@@ -1,5 +1,12 @@
 import type { SwapRequest } from "@/types/swap";
 
+export type DemoUser = {
+  userId: number;
+  userName: string;
+  phoneNumber: string;
+  thinqUserKey: string;
+};
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   (typeof window === "undefined"
@@ -35,11 +42,32 @@ export type BookingPayload = PickupLocationPayload & {
 };
 
 export function createSwapRequest(applianceType = "washing_machine") {
+  return createSwapRequestForUser(
+    {
+      userName: "Demo User",
+      phoneNumber: "+91-90000-00000",
+    },
+    applianceType,
+  );
+}
+
+export function demoLogin(userName: string, phoneNumber: string) {
+  return request<DemoUser>("/api/auth/demo-login", {
+    method: "POST",
+    body: JSON.stringify({ userName, phoneNumber }),
+  });
+}
+
+export function createSwapRequestForUser(
+  user: Pick<DemoUser, "userId" | "userName" | "phoneNumber"> | { userName: string; phoneNumber: string },
+  applianceType = "washing_machine",
+) {
   return request<SwapRequest>("/api/swap-requests", {
     method: "POST",
     body: JSON.stringify({
-      userName: "Demo User",
-      phoneNumber: "+91-90000-00000",
+      userId: "userId" in user ? user.userId : undefined,
+      userName: user.userName,
+      phoneNumber: user.phoneNumber,
       applianceType,
     }),
   });

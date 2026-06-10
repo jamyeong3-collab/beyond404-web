@@ -37,8 +37,10 @@ import {
   analyzePhoto,
   completeFinalValuation,
   confirmBooking,
-  createSwapRequest,
+  createSwapRequestForUser,
+  demoLogin,
   requestInstantCall,
+  type DemoUser,
 } from "@/lib/api";
 import type { SwapRequest } from "@/types/swap";
 
@@ -78,7 +80,7 @@ const marketProducts = [
     category: "세탁기",
     price: 62900,
     benefit: "FHP1411Z9P 공식 LG India 상품",
-    description: "대용량 세탁에 맞춘 AI Direct Drive 기반 프론트 로드 세탁기입니다. Steam+와 5 Star 효율을 강조한 교체 추천 모델입니다.",
+    description: "대용량 세탁에 맞춘 AI Direct Drive 기반 프론트 로드 세탁기입니다.",
     imageUrl: "https://www.lg.com/content/dam/channel/wcms/in/images/washing-machines/fhp1411z9p_apsqeil_eail_in_c/gallery/FHP1411Z9P-450x450-1.jpg",
     productUrl: "https://www.lg.com/in/laundry/front-loading-washing-machines/fhp1411z9p/",
     specs: ["11kg 대용량", "AI Direct Drive", "Steam+", "5 Star 효율"],
@@ -90,7 +92,7 @@ const marketProducts = [
     category: "냉장고",
     price: 74900,
     benefit: "GL-T422VPZX 공식 LG India 상품",
-    description: "398L 용량의 더블 도어 냉장고로 가족 단위 사용에 적합합니다. Convertible 기능과 Wi-Fi 기반 편의 기능을 데모에 반영했습니다.",
+    description: "398L 용량의 더블 도어 냉장고입니다.",
     imageUrl: "https://www.lg.com/content/dam/channel/wcms/in/images/refrigerators/updated/new/GL-T422VPZX-450X450.jpg",
     productUrl: "https://www.lg.com/in/refrigerators/double-door-refrigerators/gl-t422vpzx/",
     specs: ["398L 용량", "Double Door", "Convertible", "Wi-Fi 지원"],
@@ -102,7 +104,7 @@ const marketProducts = [
     category: "에어컨",
     price: 45900,
     benefit: "US-Q19BNZE3 공식 LG India 상품",
-    description: "1.5 Ton 5 Star 등급의 Split AC입니다. Dual Inverter Compressor와 AI Convertible 6-in-1 흐름을 강조했습니다.",
+    description: "1.5 Ton 5 Star 등급의 Split AC입니다.",
     imageUrl: "https://www.lg.com/content/dam/channel/wcms/in/images/split-ac/updatedgallery/us-q19bnze3/new/US-Q19BNZE3-450X450.jpg",
     productUrl: "https://www.lg.com/in/air-conditioners/split-air-conditioners/us-q19bnze3/",
     specs: ["1.5 Ton", "5 Star", "Dual Inverter", "AI Convertible 6-in-1"],
@@ -123,6 +125,18 @@ export default function HomePage() {
   const [homeSwapStatus, setHomeSwapStatus] = useState<HomeSwapStatus>("none");
   const [reservationLabel, setReservationLabel] = useState("");
   const [reservationAddress, setReservationAddress] = useState("");
+  const [demoUser, setDemoUser] = useState<DemoUser | null>(null);
+
+  useEffect(() => {
+    const savedUser = window.localStorage.getItem("swapit-demo-user");
+    if (!savedUser) return;
+
+    try {
+      setDemoUser(JSON.parse(savedUser) as DemoUser);
+    } catch {
+      window.localStorage.removeItem("swapit-demo-user");
+    }
+  }, []);
 
   useEffect(() => {
     if (homeSwapStatus !== "reviewPending" && homeSwapStatus !== "reReviewPending") {
@@ -145,14 +159,27 @@ export default function HomePage() {
     return () => window.clearTimeout(timer);
   }, [homeSwapStatus]);
 
+  const loginMutation = useMutation({
+    mutationFn: ({ userName, phoneNumber }: { userName: string; phoneNumber: string }) =>
+      demoLogin(userName, phoneNumber),
+    onSuccess: (data) => {
+      setDemoUser(data);
+      window.localStorage.setItem("swapit-demo-user", JSON.stringify(data));
+    },
+  });
+
   const createMutation = useMutation({
-    mutationFn: () => createSwapRequest(selectedAppliance),
+    mutationFn: () => {
+      if (!demoUser) throw new Error("Demo login is required");
+      return createSwapRequestForUser(demoUser, selectedAppliance);
+    },
     onSuccess: (data) => setSwapRequest(data),
   });
 
   const analyzeMutation = useMutation({
     mutationFn: async () => {
-      const current = swapRequest ?? (await createSwapRequest(selectedAppliance));
+      if (!demoUser) throw new Error("Demo login is required");
+      const current = swapRequest ?? (await createSwapRequestForUser(demoUser, selectedAppliance));
       return analyzePhoto(current.id, fileName, selectedAppliance);
     },
     onSuccess: (data) => {
@@ -252,6 +279,15 @@ export default function HomePage() {
       ? activeReservationRequest
       : swapRequest;
 
+
+  const resetDemoLogin = () => {
+    window.localStorage.removeItem("swapit-demo-user");
+    setDemoUser(null);
+    setMarketOpened(false);
+    setSwapItOpened(false);
+    resetExchangeFlow();
+    clearActiveReservation();
+  };
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#202124] px-3 py-8">
       <section className="relative w-[min(100%,424px)] rounded-[52px] border-[8px] border-[#090a0f] bg-[#090a0f] p-[3px] shadow-phone">
@@ -269,7 +305,22 @@ export default function HomePage() {
                 <IndianPatternOverlay className="z-0" />
               ) : null}
               <PhoneStatusBar isDark={swapItOpened && swapStep === "intro"} />
-              {marketOpened ? (
+              {!demoUser ? (
+                <DemoLoginScreen
+                  loading={loginMutation.isPending}
+                  error={
+                    loginMutation.error instanceof Error ? loginMutation.error.message : null
+                  }
+                  onBack={() => {
+                    setIsOpening(false);
+                    setMarketOpened(false);
+                    setThinQOpened(false);
+                  }}
+                  onLogin={(userName, phoneNumber) =>
+                    loginMutation.mutate({ userName, phoneNumber })
+                  }
+                />
+              ) : marketOpened ? (
                 <LgMarketScreen
                   amount={swapRequest?.credit?.amount ?? 0}
                   onBack={() => setMarketOpened(false)}
@@ -349,6 +400,7 @@ export default function HomePage() {
                 />
               ) : (
                 <ThinQHomeScreen
+                  demoUser={demoUser}
                   homeSwapStatus={homeSwapStatus}
                   reservationLabel={reservationLabel}
                   onBackHome={() => {
@@ -370,6 +422,7 @@ export default function HomePage() {
                     setSwapItOpened(true);
                   }}
                   onOpenReservation={openOngoingReservation}
+                  onLogout={resetDemoLogin}
                 />
               )}
             </div>
@@ -469,7 +522,86 @@ function PhoneHomeScreen({
   );
 }
 
+function DemoLoginScreen({
+  loading,
+  error,
+  onBack,
+  onLogin,
+}: {
+  loading: boolean;
+  error: string | null;
+  onBack: () => void;
+  onLogin: (userName: string, phoneNumber: string) => void;
+}) {
+  const [userName, setUserName] = useState("Demo User");
+  const [phoneNumber, setPhoneNumber] = useState("010-4040-2404");
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col px-5 pb-6">
+      <header className="mb-5 flex items-center justify-between">
+        <button
+          aria-label="홈으로 돌아가기"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-ink shadow-sm"
+          onClick={onBack}
+        >
+          <ArrowLeft size={18} />
+        </button>
+        <div className="text-center">
+          <p className="text-xs font-black text-lgred">LG ThinQ</p>
+          <p className="text-[11px] font-semibold text-slate-400">Demo Login</p>
+        </div>
+        <div className="h-9 w-9" />
+      </header>
+
+      <section className="rounded-2xl bg-white p-5 shadow-sm">
+        <p className="text-xs font-black text-lgred">SwapIt 데모 로그인</p>
+        <h1 className="mt-2 text-2xl font-black leading-tight text-ink">
+          신청 데이터를 DB에 저장할 사용자를 확인해주세요
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-slate-500">
+          입력한 이름과 휴대폰 번호가 users 테이블에 저장되고, 이후 교환 신청과 예약 데이터가 이 사용자와 연결됩니다.
+        </p>
+
+        <label className="mt-6 block text-sm font-black text-ink">
+          이름
+          <input
+            className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 text-base font-bold outline-none focus:border-lgred"
+            value={userName}
+            onChange={(event) => setUserName(event.target.value)}
+            placeholder="이름"
+          />
+        </label>
+
+        <label className="mt-4 block text-sm font-black text-ink">
+          휴대폰 번호
+          <input
+            className="mt-2 h-12 w-full rounded-xl border border-slate-200 px-4 text-base font-bold outline-none focus:border-lgred"
+            value={phoneNumber}
+            onChange={(event) => setPhoneNumber(event.target.value)}
+            placeholder="010-0000-0000"
+          />
+        </label>
+
+        {error ? (
+          <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
+            로그인이 원활하지 않습니다. 백엔드 서버를 확인해주세요.
+          </p>
+        ) : null}
+
+        <button
+          className="mt-6 h-13 w-full rounded-xl bg-lgred text-base font-black text-white disabled:bg-slate-300"
+          disabled={loading || !userName.trim() || !phoneNumber.trim()}
+          onClick={() => onLogin(userName.trim(), phoneNumber.trim())}
+        >
+          {loading ? "로그인 중..." : "데모 로그인"}
+        </button>
+      </section>
+    </div>
+  );
+}
+
 function ThinQHomeScreen({
+  demoUser,
   homeSwapStatus,
   reservationLabel,
   onBackHome,
@@ -477,7 +609,9 @@ function ThinQHomeScreen({
   onOpenMarket,
   onOpenReview,
   onOpenReservation,
+  onLogout,
 }: {
+  demoUser: DemoUser;
   homeSwapStatus: HomeSwapStatus;
   reservationLabel: string;
   onBackHome: () => void;
@@ -485,12 +619,13 @@ function ThinQHomeScreen({
   onOpenMarket: () => void;
   onOpenReview: () => void;
   onOpenReservation: () => void;
+  onLogout: () => void;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col px-4 pb-5">
       <header className="mb-4 flex items-center justify-between">
         <button
-          aria-label="휴대폰 홈으로 돌아가기"
+          aria-label="아이폰 홈으로 돌아가기"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-ink shadow-sm"
           onClick={onBackHome}
         >
@@ -500,13 +635,21 @@ function ThinQHomeScreen({
           <p className="text-xs font-black text-lgred">LG ThinQ</p>
           <p className="text-[11px] font-semibold text-slate-400">Smart Home</p>
         </div>
-        <div className="h-9 w-9" />
+        <button
+          className="h-9 rounded-full bg-white px-3 text-[11px] font-black text-lgred shadow-sm"
+          onClick={onLogout}
+        >
+          계정 변경
+        </button>
       </header>
 
       <div className="phone-scroll flex-1 overflow-y-auto">
         <section className="rounded-2xl bg-white p-5 shadow-sm">
           <p className="text-sm font-semibold text-slate-500">안녕하세요</p>
           <h1 className="mt-1 text-2xl font-black leading-tight text-ink">오늘의 집 상태</h1>
+          <div className="mt-3 rounded-xl bg-lgred/5 px-3 py-2 text-xs font-bold text-lgred">
+            로그인 사용자: {demoUser.userName} / {demoUser.phoneNumber}
+          </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <DeviceCard icon={<WashingMachine size={25} />} label="세탁기" status="대기 중" />
             <DeviceCard icon={<Refrigerator size={25} />} label="냉장고" status="정상" />
@@ -536,7 +679,7 @@ function ThinQHomeScreen({
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-black">SwapIt 가전 교환</span>
               <span className="mt-1 block text-xs leading-5 text-white/70">
-                오래된 가전을 수거하고 최종 크레딧으로 전환
+                오래된 가전을 수거하고 크레딧으로 전환
               </span>
             </span>
             <ChevronRight size={20} />
@@ -557,18 +700,6 @@ function ThinQHomeScreen({
             <ChevronRight size={20} className="text-slate-400" />
           </button>
         </section>
-
-        <section className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-lgred/10 text-lgred">
-              <Sparkles size={22} />
-            </span>
-            <div>
-              <p className="text-sm font-bold text-ink">케어 알림</p>
-              <p className="text-xs text-slate-500">이번 주 세탁기 필터 점검을 권장합니다.</p>
-            </div>
-          </div>
-        </section>
       </div>
     </div>
   );
@@ -584,7 +715,6 @@ function LgMarketScreen({
   onReturnHome: () => void;
 }) {
   const [selectedProductId, setSelectedProductId] = useState<(typeof marketProducts)[number]["id"] | null>(null);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const selectedProduct = marketProducts.find((product) => product.id === selectedProductId);
 
   return (
@@ -593,315 +723,81 @@ function LgMarketScreen({
         <button
           aria-label="이전 화면으로 돌아가기"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-ink shadow-sm"
-          onClick={
-            checkoutOpen
-              ? () => setCheckoutOpen(false)
-              : selectedProduct
-                ? () => setSelectedProductId(null)
-                : onBack
-          }
+          onClick={selectedProduct ? () => setSelectedProductId(null) : onBack}
         >
           <ArrowLeft size={18} />
         </button>
         <div className="text-center">
-          <p className="text-xs font-black text-lgred">LG Market</p>
-          <p className="text-[11px] font-semibold text-slate-400">ThinQ Store</p>
+          <p className="text-xs font-black text-lgred">LG 가전 마켓</p>
+          <p className="text-[11px] font-semibold text-slate-400">Credit applied</p>
         </div>
-        <button className="h-9 rounded-full bg-white px-3 text-xs font-bold text-lgred shadow-sm" onClick={onReturnHome}>
+        <button className="h-9 rounded-full bg-white px-3 text-[11px] font-black text-lgred shadow-sm" onClick={onReturnHome}>
           홈
         </button>
       </header>
 
       <div className="phone-scroll flex-1 overflow-y-auto">
-        {selectedProduct && checkoutOpen ? (
-          <MarketCheckout product={selectedProduct} amount={amount} onReturnHome={onReturnHome} />
-        ) : selectedProduct ? (
-          <MarketProductDetail
-            amount={amount}
-            product={selectedProduct}
-            onCheckout={() => setCheckoutOpen(true)}
-          />
+        <section className="rounded-3xl bg-lgred p-5 text-white shadow-sm">
+          <p className="text-xs font-black text-white/75">보유 SwapIt 크레딧</p>
+          <h1 className="mt-1 text-3xl font-black">₹{amount.toLocaleString()}</h1>
+          <p className="mt-3 text-sm leading-6 text-white/80">데모 마켓에서 LG 가전 구매 시 크레딧을 적용해볼 수 있어요.</p>
+        </section>
+
+        {selectedProduct ? (
+          <section className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
+            <div className="flex gap-4">
+              <ProductImage product={selectedProduct} size="large" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-black text-lgred">{selectedProduct.category}</p>
+                <h2 className="mt-1 text-lg font-black leading-snug text-ink">{selectedProduct.name}</h2>
+                <p className="mt-2 text-sm text-slate-500">{selectedProduct.description}</p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-xl bg-cloud p-3">
+              <p className="text-xs font-bold text-slate-500">데모 판매가</p>
+              <p className="text-xl font-black text-ink">₹{selectedProduct.price.toLocaleString()}</p>
+              <p className="mt-1 text-xs font-bold text-lgred">크레딧 적용가 ₹{Math.max(selectedProduct.price - amount, 0).toLocaleString()}</p>
+            </div>
+            <button className="mt-4 h-12 w-full rounded-xl bg-lgred text-sm font-black text-white">
+              결제하기
+            </button>
+          </section>
         ) : (
-          <MarketProductList
-            amount={amount}
-            onSelect={(productId) => {
-              setSelectedProductId(productId);
-              setCheckoutOpen(false);
-            }}
-          />
+          <section className="mt-4 space-y-3">
+            <h2 className="text-sm font-black text-ink">추천 LG 가전</h2>
+            {marketProducts.map((product) => (
+              <button
+                key={product.id}
+                className="flex w-full items-center gap-3 rounded-2xl bg-white p-3 text-left shadow-sm"
+                onClick={() => setSelectedProductId(product.id)}
+              >
+                <ProductImage product={product} size="small" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-black text-lgred">{product.category}</span>
+                  <span className="block truncate text-sm font-black text-ink">{product.name}</span>
+                  <span className="mt-1 block text-xs text-slate-500">크레딧 적용가 ₹{Math.max(product.price - amount, 0).toLocaleString()}</span>
+                </span>
+                <span className="rounded-full bg-lgred/10 px-3 py-1 text-xs font-black text-lgred">선택</span>
+              </button>
+            ))}
+          </section>
         )}
       </div>
     </div>
   );
 }
 
-function MarketProductList({
-  amount,
-  onSelect,
-}: {
-  amount: number;
-  onSelect: (productId: (typeof marketProducts)[number]["id"]) => void;
-}) {
-  return (
-    <>
-      <section className="rounded-3xl bg-lgred p-5 text-white shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-black text-white/75">LG 가전 마켓</p>
-            <h1 className="mt-1 text-2xl font-black leading-tight">크레딧으로 새 가전 구매</h1>
-          </div>
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15">
-            <ShoppingBag size={28} />
-          </div>
-        </div>
-        <div className="mt-4 rounded-2xl bg-white/12 p-3">
-          <p className="text-xs font-semibold text-white/70">보유 SwapIt 크레딧</p>
-          <p className="mt-1 text-2xl font-black">₹{amount.toLocaleString()}</p>
-          {amount === 0 ? (
-            <p className="mt-1 text-xs font-semibold text-white/70">크레딧 없이도 상품 구경은 가능해요</p>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="mt-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-black text-ink">추천 LG 가전</h2>
-          <span className="text-xs font-semibold text-slate-400">Credit applied</span>
-        </div>
-        <div className="space-y-3">
-          {marketProducts.map((product) => {
-            const finalPrice = Math.max(product.price - amount, 0);
-            const Icon = product.icon;
-
-            return (
-              <button
-                key={product.id}
-                className="flex w-full items-center gap-3 rounded-2xl bg-white p-3 text-left shadow-sm"
-                onClick={() => onSelect(product.id)}
-              >
-                <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-lgred/5">
-                  <ProductImage
-                    src={product.imageUrl}
-                    alt=""
-                    className="h-full w-full p-1.5"
-                    fallback={<Icon size={24} />}
-                  />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-black text-lgred">{product.category}</span>
-                  <span className="mt-0.5 block truncate text-sm font-black text-ink">{product.name}</span>
-                  <span className="mt-1 block text-xs text-slate-500">
-                    데모 판매가 ₹{product.price.toLocaleString()} · 적용가 ₹{finalPrice.toLocaleString()}
-                  </span>
-                </span>
-                <span className="rounded-full bg-lgred/10 px-3 py-1 text-xs font-black text-lgred">선택</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-    </>
-  );
-}
-
-function MarketProductDetail({
-  product,
-  amount,
-  onCheckout,
-}: {
-  product: (typeof marketProducts)[number];
-  amount: number;
-  onCheckout: () => void;
-}) {
-  const finalPrice = Math.max(product.price - amount, 0);
-  const Icon = product.icon;
-
-  return (
-    <div className="flex min-h-full flex-col">
-      <section className="overflow-hidden rounded-3xl bg-white shadow-sm">
-        <div className="flex h-52 items-center justify-center bg-[linear-gradient(145deg,#f8fafc,#eef2f7)]">
-          <ProductImage
-            src={product.imageUrl}
-            alt={product.name}
-            className="h-full w-full p-5"
-            fallback={<Icon size={44} />}
-          />
-        </div>
-        <div className="p-5">
-          <p className="text-xs font-black text-lgred">{product.category}</p>
-          <h1 className="mt-1 text-2xl font-black leading-tight text-ink">{product.name}</h1>
-          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{product.description}</p>
-
-          <div className="mt-4 rounded-2xl bg-slate-50 p-4">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <p className="text-xs font-black text-slate-400">데모 판매가</p>
-                <p className="mt-1 text-2xl font-black text-ink">₹{product.price.toLocaleString()}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-black text-lgred">크레딧 적용가</p>
-                <p className="mt-1 text-xl font-black text-lgred">₹{finalPrice.toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-4 rounded-3xl bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-black text-ink">주요 기능</h2>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {product.specs.map((spec) => (
-            <div key={spec} className="rounded-2xl bg-slate-50 px-3 py-2 text-xs font-black text-slate-600">
-              {spec}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div className="mt-5 grid grid-cols-2 gap-2">
-        <button
-          className="h-12 rounded-xl border border-lgred/20 bg-white text-sm font-black text-lgred"
-          onClick={() => window.open(product.productUrl, "_blank", "noopener,noreferrer")}
-        >
-          공식 상품 보기
-        </button>
-        <button className="h-12 rounded-xl bg-lgred text-sm font-black text-white" onClick={onCheckout}>
-          결제하기
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function ProductImage({
-  src,
-  alt,
-  className,
-  fallback,
-}: {
-  src: string;
-  alt: string;
-  className: string;
-  fallback: ReactNode;
-}) {
-  const [failed, setFailed] = useState(false);
-
-  if (failed) {
-    return <span className="flex h-full w-full items-center justify-center text-lgred">{fallback}</span>;
-  }
-
-  return (
-    <img
-      src={src}
-      alt={alt}
-      className={`object-contain ${className}`}
-      onError={() => setFailed(true)}
-    />
-  );
-}
-
-function MarketCheckout({
   product,
-  amount,
-  onReturnHome,
+  size = "small",
 }: {
   product: (typeof marketProducts)[number];
-  amount: number;
-  onReturnHome: () => void;
+  size?: "small" | "large";
 }) {
-  const finalPrice = Math.max(product.price - amount, 0);
   const Icon = product.icon;
-
   return (
-    <div className="flex min-h-full flex-col">
-      <section className="rounded-3xl bg-white p-5 shadow-sm">
-        <div className="flex items-start gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-lgred text-white">
-            <Icon size={30} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-black text-lgred">LG 마켓 결제</p>
-            <h1 className="mt-1 text-xl font-black leading-tight text-ink">{product.name}</h1>
-            <p className="mt-2 text-xs font-semibold text-slate-500">{product.benefit}</p>
-          </div>
-        </div>
-
-        <div className="mt-5 space-y-2 rounded-2xl bg-slate-50 p-4">
-          <MarketPriceRow label="상품 금액" value={`₹${product.price.toLocaleString()}`} />
-          <MarketPriceRow label="SwapIt 크레딧 적용" value={`-₹${amount.toLocaleString()}`} accent />
-          <div className="border-t border-slate-200 pt-3">
-            <MarketPriceRow label="최종 결제 금액" value={`₹${finalPrice.toLocaleString()}`} strong />
-          </div>
-        </div>
-      </section>
-
-      <div className="mt-4 space-y-3">
-        <MarketInfoRow
-          icon={<CreditCard size={17} />}
-          title="크레딧 자동 적용"
-          description="SwapIt으로 받은 크레딧이 결제 금액에서 바로 차감됩니다."
-        />
-        <MarketInfoRow
-          icon={<CheckCircle2 size={17} />}
-          title="교체 구매 흐름 완성"
-          description="구형 가전 수거부터 새 LG 가전 구매까지 자연스럽게 이어집니다."
-        />
-      </div>
-
-      <div className="mt-5 grid grid-cols-2 gap-2">
-        <button
-          className="h-12 rounded-xl border border-lgred/20 bg-white text-sm font-black text-lgred"
-          onClick={() => window.open(product.productUrl, "_blank", "noopener,noreferrer")}
-        >
-          공식 상품 보기
-        </button>
-        <button className="h-12 rounded-xl bg-lgred text-sm font-black text-white" onClick={onReturnHome}>
-          구매 완료 데모
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function MarketPriceRow({
-  label,
-  value,
-  accent = false,
-  strong = false,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-  strong?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className={`text-sm ${strong ? "font-black text-ink" : "font-semibold text-slate-500"}`}>{label}</span>
-      <span className={`text-sm font-black ${accent ? "text-lgred" : "text-ink"} ${strong ? "text-lg" : ""}`}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function MarketInfoRow({
-  icon,
-  title,
-  description,
-}: {
-  icon: ReactNode;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex gap-3 rounded-2xl bg-white p-3 shadow-sm">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-lgred text-white">
-        {icon}
-      </span>
-      <div>
-        <p className="text-sm font-black text-ink">{title}</p>
-        <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
-      </div>
+    <div className={size === "large" ? "flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl bg-lgred/10 text-lgred" : "flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-lgred/10 text-lgred"}>
+      <Icon size={size === "large" ? 42 : 26} />
     </div>
   );
 }
@@ -926,21 +822,23 @@ function SwapItStatusCard({
         <span className="text-xs font-semibold text-slate-400">Status</span>
       </div>
       <button
-        className={`flex w-full items-center gap-4 rounded-2xl p-4 text-left shadow-sm ${
-          isCompleted ? "bg-lgred text-white" : "bg-white text-ink"
-        }`}
+        className={
+          "flex w-full items-center gap-4 rounded-2xl p-4 text-left shadow-sm " +
+          (isCompleted ? "bg-lgred text-white" : "bg-white text-ink")
+        }
         onClick={onOpenReservation}
       >
         <span
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
-            isCompleted ? "bg-white/15 text-white" : "bg-lgred/10 text-lgred"
-          }`}
+          className={
+            "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl " +
+            (isCompleted ? "bg-white/15 text-white" : "bg-lgred/10 text-lgred")
+          }
         >
           <Icon size={25} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-black">{card.title}</span>
-          <span className={`mt-1 block text-xs leading-5 ${isCompleted ? "text-white/75" : "text-slate-500"}`}>
+          <span className={"mt-1 block text-xs leading-5 " + (isCompleted ? "text-white/75" : "text-slate-500")}>
             {card.description}
           </span>
         </span>
@@ -955,44 +853,44 @@ function getHomeStatusCard(status: HomeSwapStatus, reservationLabel: string) {
     case "reserved":
       return {
         icon: CalendarCheck,
-        title: "수거 예약 완료",
-        description: `${reservationLabel || "예약 시간"}에 수거 예정입니다. 예약 시간이 홈에 계속 표시됩니다.`,
+        title: "수거 예약이 완료됐어요",
+        description: (reservationLabel || "예약 시간") + "에 맞춰 수거가 진행됩니다.",
       };
     case "pickup":
       return {
         icon: Truck,
-        title: "수거 진행 중",
-        description: "수거 크루 이동 상태를 확인할 수 있어요.",
+        title: "수거가 진행 중이에요",
+        description: "LG 인증 수거 파트너가 방문 준비 중입니다.",
       };
     case "reviewPending":
       return {
         icon: ClipboardCheck,
-        title: "최종 검수중...",
-        description: "수거품을 확인 중입니다. 완료되면 ThinQ 알림으로 알려드려요.",
+        title: "최종 검수 중...",
+        description: "수거품을 확인하고 있어요. 완료되면 ThinQ 알림으로 알려드려요.",
       };
     case "reviewCompleted":
       return {
         icon: Bell,
-        title: "검수 완료됐어요",
-        description: "감정결과를 확인해보세요!",
+        title: "검수가 완료됐어요",
+        description: "최종 감정 결과와 크레딧을 확인해보세요.",
       };
     case "reReviewPending":
       return {
-        icon: ClipboardCheck,
+        icon: Clock,
         title: "재검수 중...",
-        description: "재검수 요청을 다시 확인하고 있어요. 5초 뒤 완료 알림으로 바뀝니다.",
+        description: "요청하신 내용을 기준으로 다시 확인하고 있어요.",
       };
     case "reReviewCompleted":
       return {
-        icon: Bell,
-        title: "재검수 완료됐어요",
-        description: "재검수 결과를 확인해보세요!",
+        icon: CheckCircle2,
+        title: "재검수가 완료됐어요",
+        description: "재검수 결과와 최종 크레딧을 확인해보세요.",
       };
     default:
       return {
         icon: Recycle,
-        title: "SwapIt",
-        description: "진행 중인 신청이 없습니다.",
+        title: "SwapIt 신청 가능",
+        description: "오래된 가전을 크레딧으로 바꿔보세요.",
       };
   }
 }
@@ -1086,7 +984,7 @@ function SwapItFeatureScreen(props: {
       >
         {props.error ? (
           <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            연결이 원활하지 않습니다. 잠시 후 다시 시도해주세요.
+            ??????⑤벡瑜????????붺몭??????? ?????????????곸죩. ???????됯퇇逾??????????댄뱼?????轅붽틓????????欲꼲????饔낅떽??????
           </div>
         ) : null}
         {props.step === "intro" ? (
@@ -1328,12 +1226,12 @@ function SwapItIntro({
         <p className="text-xs font-black text-white/80">LG ThinQ</p>
         <h1 className="mt-5 text-5xl font-black leading-[1.02]">SwapIt</h1>
         <p className="mt-4 max-w-[285px] text-sm font-semibold leading-6 text-white/85">
-          오래된 가전을 사진으로 등록하고, 수거 후 확정 크레딧으로 전환하세요.
+          ???????????????ル뒌???????獄쏅챶留?????????????????????롮쾸?椰???⑤챶猷?????嚥▲굧???? ????????????饔낅떽???????????????筌뤾쑬?????????ш내?℡ㅇ????轅붽틓??影?놁쟼???
         </p>
       </div>
 
       <p className="relative z-10 mb-3 mt-10 text-sm font-black text-white">
-        교환할 가전 선택
+        ????????????ル뒌????????壤굿??Β??
       </p>
       <div className="relative z-10 rounded-[28px] bg-white/95 p-4 text-ink shadow-xl shadow-black/10 backdrop-blur-sm">
         <div className="grid grid-cols-2 gap-3">
@@ -1360,7 +1258,7 @@ function SwapItIntro({
           className="mt-4 h-12 w-full rounded-xl bg-lgred text-sm font-black text-white"
           onClick={onStart}
         >
-          사진 등록으로 이동
+          ?????????롮쾸?椰???⑤챶猷??????????????
         </button>
       </div>
     </section>
