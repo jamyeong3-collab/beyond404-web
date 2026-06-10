@@ -18,26 +18,26 @@ export function ReservationStatusPanel({
     <section className="flex h-full flex-col rounded-[28px] bg-white p-5 shadow-sm">
       <div className="flex items-center gap-2 text-sm font-black text-lgred">
         <CalendarCheck size={18} />
-        예약 완료
+        진행 중인 예약
       </div>
 
       <div className="mt-5 rounded-3xl border border-lgred/15 bg-lgred/5 p-5 text-center">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-lgred text-white">
           <CalendarCheck size={30} />
         </div>
-        <p className="mt-4 text-xs font-black text-lgred">수거 예약이 확정됐어요</p>
+        <p className="mt-4 text-xs font-black text-lgred">수거 예약이 등록되어 있습니다</p>
         <h2 className="mt-2 text-2xl font-black text-ink">{reservationLabel || "예약 시간 확인 중"}</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          예약 시간 전까지 ThinQ 홈에서 수거 일정을 확인할 수 있어요.
+          예약 시간 전까지 여기서 수거 일정과 주소를 확인하고, 필요하면 예약을 변경하거나 취소할 수 있습니다.
         </p>
       </div>
 
       <div className="mt-4 space-y-3">
-        <InfoRow icon={<Clock size={18} />} title="예약 시간" description={reservationLabel || "예약 시간"} />
+        <InfoRow icon={<Clock size={18} />} title="예약 시간" description={reservationLabel || "예약 정보 없음"} />
         <InfoRow
           icon={<MapPin size={18} />}
           title="수거 위치"
-          description={reservationAddress || "뉴델리 LG ThinQ 데모 주소"}
+          description={reservationAddress || "입력한 수거 주소를 불러오는 중입니다."}
         />
       </div>
 
@@ -47,7 +47,7 @@ export function ReservationStatusPanel({
           onClick={onChange}
           type="button"
         >
-          예약 시간 변경
+          예약 변경
         </button>
         <button
           className="h-12 rounded-xl bg-slate-100 text-sm font-black text-slate-500"

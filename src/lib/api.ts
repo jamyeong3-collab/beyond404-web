@@ -22,6 +22,18 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+export type PickupLocationPayload = {
+  address: string;
+  detailAddress?: string;
+  pickupLat: number;
+  pickupLng: number;
+};
+
+export type BookingPayload = PickupLocationPayload & {
+  bookingDate?: string;
+  bookingTime?: string;
+};
+
 export function createSwapRequest(applianceType = "washing_machine") {
   return request<SwapRequest>("/api/swap-requests", {
     method: "POST",
@@ -40,16 +52,16 @@ export function analyzePhoto(id: number, fileName: string, applianceType = "wash
   });
 }
 
-export function confirmBooking(id: number, address = "Bengaluru, Karnataka") {
+export function confirmBooking(id: number, booking: BookingPayload) {
   return request<SwapRequest>(`/api/swap-requests/${id}/booking`, {
     method: "POST",
     body: JSON.stringify({
-      bookingDate: "2026-06-12",
-      bookingTime: "10:00",
-      address,
-      detailAddress: "Demo street",
-      pickupLat: 28.6197,
-      pickupLng: 77.2196,
+      bookingDate: booking.bookingDate ?? "2026-06-12",
+      bookingTime: booking.bookingTime ?? "10:00",
+      address: booking.address,
+      detailAddress: booking.detailAddress ?? "",
+      pickupLat: booking.pickupLat,
+      pickupLng: booking.pickupLng,
     }),
   });
 }
@@ -66,16 +78,20 @@ export function acceptPreValuation(id: number) {
   });
 }
 
-export function requestInstantCall(id: number, address = "A-12, New Delhi demo street") {
+export function requestInstantCall(id: number, pickup: PickupLocationPayload) {
   return request<SwapRequest>(`/api/swap-requests/${id}/instant-call`, {
     method: "POST",
     body: JSON.stringify({
-      address,
-      detailAddress: "Near LG demo pickup point",
-      pickupLat: 28.6197,
-      pickupLng: 77.2196,
+      address: pickup.address,
+      detailAddress: pickup.detailAddress ?? "",
+      pickupLat: pickup.pickupLat,
+      pickupLng: pickup.pickupLng,
     }),
   });
+}
+
+export function getTracking(id: number) {
+  return request<SwapRequest>(`/api/swap-requests/${id}/tracking`);
 }
 
 export function requestReReview(id: number, reason: string) {

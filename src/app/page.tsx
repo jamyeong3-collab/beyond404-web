@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   Clock,
   CreditCard,
+  Home,
   Microwave,
   Recycle,
   Refrigerator,
@@ -25,7 +26,8 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { BookingPanel } from "@/features/booking/BookingPanel";
 import type { BookingSelection } from "@/features/booking/BookingPanel";
-import { ReservationStatusPanel } from "@/features/booking/ReservationStatusPanel";
+import { OngoingReservationPanel } from "@/features/booking/OngoingReservationPanel";
+import { ReservationCompletePanel } from "@/features/booking/ReservationCompletePanel";
 import { CapturePanel } from "@/features/capture/CapturePanel";
 import { CreditPanel } from "@/features/credit/CreditPanel";
 import { AnalyzingPanel } from "@/features/inspection/AnalyzingPanel";
@@ -46,7 +48,8 @@ type SwapStep =
   | "analyzing"
   | "valuation"
   | "booking"
-  | "reservation"
+  | "reservationComplete"
+  | "ongoing"
   | "tracking"
   | "credit";
 type HomeSwapStatus =
@@ -116,27 +119,17 @@ export default function HomePage() {
   const [selectedAppliance, setSelectedAppliance] = useState<ApplianceId>(applianceOptions[0].id);
   const [fileName, setFileName] = useState("");
   const [swapRequest, setSwapRequest] = useState<SwapRequest | null>(null);
+  const [activeReservationRequest, setActiveReservationRequest] = useState<SwapRequest | null>(null);
   const [homeSwapStatus, setHomeSwapStatus] = useState<HomeSwapStatus>("none");
   const [reservationLabel, setReservationLabel] = useState("");
   const [reservationAddress, setReservationAddress] = useState("");
 
   useEffect(() => {
-    if (
-      homeSwapStatus !== "reserved" &&
-      homeSwapStatus !== "reviewPending" &&
-      homeSwapStatus !== "reReviewPending"
-    ) {
+    if (homeSwapStatus !== "reviewPending" && homeSwapStatus !== "reReviewPending") {
       return;
     }
 
     const timer = window.setTimeout(() => {
-      if (homeSwapStatus === "reserved") {
-        setHomeSwapStatus("reviewPending");
-        setSwapStep("credit");
-        setSwapItOpened(false);
-        return;
-      }
-
       if (homeSwapStatus === "reviewPending") {
         setHomeSwapStatus("reviewCompleted");
         setSwapStep("credit");
@@ -176,19 +169,31 @@ export default function HomePage() {
       if (!swapRequest) throw new Error("Swap request is required");
       const data =
         booking.mode === "schedule"
-          ? await confirmBooking(swapRequest.id, booking.pickupAddress)
-          : await requestInstantCall(swapRequest.id, booking.pickupAddress);
+          ? await confirmBooking(swapRequest.id, {
+              address: booking.pickupAddress ?? "A-12, New Delhi demo street",
+              detailAddress: booking.detailAddress ?? "Demo street",
+              pickupLat: booking.pickupLat ?? 28.6197,
+              pickupLng: booking.pickupLng ?? 77.2196,
+              bookingDate: booking.bookingDate,
+              bookingTime: booking.bookingTime,
+            })
+          : await requestInstantCall(swapRequest.id, {
+              address: booking.pickupAddress ?? "A-12, New Delhi demo street",
+              detailAddress: booking.detailAddress ?? "Near LG demo pickup point",
+              pickupLat: booking.pickupLat ?? 28.6197,
+              pickupLng: booking.pickupLng ?? 77.2196,
+            });
       return { data, booking };
     },
     onSuccess: ({ data, booking }) => {
       setSwapRequest(data);
+      setActiveReservationRequest(data);
       setReservationLabel(booking.reservedAt);
       setReservationAddress(booking.pickupAddress ?? "");
 
       if (booking.mode === "schedule") {
         setHomeSwapStatus("reserved");
-        setSwapStep("tracking");
-        setSwapItOpened(false);
+        setSwapStep("reservationComplete");
         return;
       }
 
@@ -199,11 +204,13 @@ export default function HomePage() {
 
   const creditMutation = useMutation({
     mutationFn: async () => {
-      if (!swapRequest) throw new Error("Swap request is required");
-      return completeFinalValuation(swapRequest.id);
+      const currentRequest = activeReservationRequest ?? swapRequest;
+      if (!currentRequest) throw new Error("Swap request is required");
+      return completeFinalValuation(currentRequest.id);
     },
     onSuccess: (data) => {
       setSwapRequest(data);
+      setActiveReservationRequest(data);
       setHomeSwapStatus("reviewCompleted");
       setSwapStep("credit");
     },
@@ -218,15 +225,32 @@ export default function HomePage() {
   const error =
     createMutation.error ?? analyzeMutation.error ?? bookingMutation.error ?? creditMutation.error;
 
-  const resetSwapFlow = () => {
+  const resetExchangeFlow = () => {
     setFileName("");
     setSwapRequest(null);
     setSelectedAppliance(applianceOptions[0].id);
+    setSwapStep("intro");
+  };
+
+  const clearActiveReservation = () => {
+    setActiveReservationRequest(null);
     setHomeSwapStatus("none");
     setReservationLabel("");
     setReservationAddress("");
-    setSwapStep("intro");
   };
+
+  const openOngoingReservation = () => {
+    setSwapStep("ongoing");
+    setSwapItOpened(true);
+  };
+
+  const screenSwapRequest =
+    swapStep === "reservationComplete" ||
+    swapStep === "ongoing" ||
+    swapStep === "tracking" ||
+    swapStep === "credit"
+      ? activeReservationRequest
+      : swapRequest;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#202124] px-3 py-8">
@@ -261,7 +285,7 @@ export default function HomePage() {
                   reservationAddress={reservationAddress}
                   selectedAppliance={selectedAppliance}
                   step={swapStep}
-                  swapRequest={swapRequest}
+                  swapRequest={screenSwapRequest}
                   analyzeLoading={analyzeMutation.isPending}
                   bookingLoading={bookingMutation.isPending}
                   creditLoading={creditMutation.isPending}
@@ -270,17 +294,22 @@ export default function HomePage() {
                       setSwapItOpened(false);
                       return;
                     }
-                    if (swapStep === "reservation") {
+                    if (
+                      swapStep === "reservationComplete" ||
+                      swapStep === "ongoing" ||
+                      swapStep === "tracking" ||
+                      swapStep === "credit"
+                    ) {
                       setSwapItOpened(false);
                       return;
                     }
                     setSwapStep(previousStep(swapStep));
                   }}
                   onClose={() => {
-                    resetSwapFlow();
+                    resetExchangeFlow();
                     setSwapItOpened(false);
                   }}
-                  onNewRequest={resetSwapFlow}
+                  onNewRequest={resetExchangeFlow}
                   onApplianceChange={setSelectedAppliance}
                   onStart={() => setSwapStep("capture")}
                   onFileChange={setFileName}
@@ -307,11 +336,16 @@ export default function HomePage() {
                   onReturnHome={() => setSwapItOpened(false)}
                   onChangeReservation={() => setSwapStep("booking")}
                   onCancelReservation={() => {
-                    setHomeSwapStatus("none");
-                    setReservationLabel("");
-                    setReservationAddress("");
+                    clearActiveReservation();
                     setSwapItOpened(false);
                   }}
+                  onCloseReservationComplete={() => setSwapItOpened(false)}
+                  onViewReservation={() => setSwapStep("ongoing")}
+                  onOpenTracking={() => {
+                    setHomeSwapStatus("pickup");
+                    setSwapStep("tracking");
+                  }}
+                  onOpenCredit={() => setSwapStep("credit")}
                 />
               ) : (
                 <ThinQHomeScreen
@@ -323,7 +357,7 @@ export default function HomePage() {
                     setThinQOpened(false);
                   }}
                   onOpenSwapIt={() => {
-                    resetSwapFlow();
+                    resetExchangeFlow();
                     setMarketOpened(false);
                     setSwapItOpened(true);
                   }}
@@ -335,10 +369,7 @@ export default function HomePage() {
                     setSwapStep("credit");
                     setSwapItOpened(true);
                   }}
-                  onOpenReservation={() => {
-                    setSwapStep("reservation");
-                    setSwapItOpened(true);
-                  }}
+                  onOpenReservation={openOngoingReservation}
                 />
               )}
             </div>
@@ -370,7 +401,8 @@ function previousStep(step: SwapStep): SwapStep {
       return "capture";
     case "booking":
       return "valuation";
-    case "reservation":
+    case "reservationComplete":
+    case "ongoing":
       return "booking";
     case "tracking":
       return "booking";
@@ -486,7 +518,6 @@ function ThinQHomeScreen({
             status={homeSwapStatus}
             reservationLabel={reservationLabel}
             onOpenReservation={onOpenReservation}
-            onOpenReview={onOpenReview}
           />
         ) : null}
 
@@ -879,18 +910,11 @@ function SwapItStatusCard({
   status,
   reservationLabel,
   onOpenReservation,
-  onOpenReview,
 }: {
   status: HomeSwapStatus;
   reservationLabel: string;
   onOpenReservation: () => void;
-  onOpenReview: () => void;
 }) {
-  const isReview =
-    status === "reviewPending" ||
-    status === "reviewCompleted" ||
-    status === "reReviewPending" ||
-    status === "reReviewCompleted";
   const isCompleted = status === "reviewCompleted" || status === "reReviewCompleted";
   const card = getHomeStatusCard(status, reservationLabel);
   const Icon = card.icon;
@@ -898,14 +922,14 @@ function SwapItStatusCard({
   return (
     <section className="mt-4">
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-black text-ink">진행 중인 SwapIt</h2>
+        <h2 className="text-sm font-black text-ink">진행 중인 예약</h2>
         <span className="text-xs font-semibold text-slate-400">Status</span>
       </div>
       <button
         className={`flex w-full items-center gap-4 rounded-2xl p-4 text-left shadow-sm ${
           isCompleted ? "bg-lgred text-white" : "bg-white text-ink"
         }`}
-        onClick={isReview ? onOpenReview : onOpenReservation}
+        onClick={onOpenReservation}
       >
         <span
           className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
@@ -1002,6 +1026,10 @@ function SwapItFeatureScreen(props: {
   onReturnHome: () => void;
   onChangeReservation: () => void;
   onCancelReservation: () => void;
+  onCloseReservationComplete: () => void;
+  onViewReservation: () => void;
+  onOpenTracking: () => void;
+  onOpenCredit: () => void;
 }) {
   const selectedLabel =
     applianceOptions.find((option) => option.id === props.selectedAppliance)?.label ?? "가전";
@@ -1027,15 +1055,29 @@ function SwapItFeatureScreen(props: {
             </button>
             <button
               className={`h-9 rounded-full bg-white/95 px-3 text-xs font-bold text-lgred shadow-sm disabled:text-slate-400 ${
-                props.step === "reservation" ? "invisible w-9 px-0" : ""
+                props.step === "tracking" ? "invisible w-9 px-0" : ""
               }`}
               disabled={props.isBusy}
-              onClick={props.step === "intro" ? props.onClose : props.onNewRequest}
+              onClick={
+                props.step === "intro"
+                  ? props.onClose
+                  : props.step === "ongoing"
+                    ? props.onReturnHome
+                    : props.onNewRequest
+              }
             >
-              {props.step === "intro" ? "닫기" : "새 신청"}
+              {props.step === "intro" ? "닫기" : props.step === "ongoing" ? <Home size={16} /> : "새 신청"}
             </button>
           </div>
-          {props.step !== "intro" ? <StepProgress step={props.step} /> : null}
+          {props.step !== "intro" &&
+          props.step !== "ongoing" &&
+          props.step !== "tracking" &&
+          props.step !== "credit" ? (
+            <ThreeStepProgress step={props.step} />
+          ) : null}
+          {(props.step === "ongoing" || props.step === "tracking" || props.step === "credit") ? (
+            <OngoingReservationHeader step={props.step} />
+          ) : null}
         </header>
       ) : null}
 
@@ -1076,12 +1118,23 @@ function SwapItFeatureScreen(props: {
             onBooking={props.onBooking}
           />
         ) : null}
-        {props.step === "reservation" ? (
-          <ReservationStatusPanel
+        {props.step === "reservationComplete" ? (
+          <ReservationCompletePanel
+            reservationAddress={props.reservationAddress}
+            reservationLabel={props.reservationLabel}
+            onClose={props.onCloseReservationComplete}
+            onViewReservation={props.onViewReservation}
+          />
+        ) : null}
+        {props.step === "ongoing" ? (
+          <OngoingReservationPanel
             reservationLabel={props.reservationLabel}
             reservationAddress={props.reservationAddress}
+            status={props.homeSwapStatus}
             onChange={props.onChangeReservation}
             onCancel={props.onCancelReservation}
+            onOpenTracking={props.onOpenTracking}
+            onOpenCredit={props.onOpenCredit}
           />
         ) : null}
         {props.step === "tracking" ? (
@@ -1157,6 +1210,73 @@ function StepProgress({ step }: { step: SwapStep }) {
   );
 }
 
+function ThreeStepProgress({ step }: { step: SwapStep }) {
+  const currentStep = getProgressStep(step);
+  const steps = [
+    { id: 1, label: "촬영" },
+    { id: 2, label: "감정" },
+    { id: 3, label: "예약" },
+  ];
+
+  return (
+    <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
+      <div className="flex items-center">
+        {steps.map((item, index) => {
+          const active = item.id === currentStep;
+          const done = item.id < currentStep;
+
+          return (
+            <div key={item.id} className="flex flex-1 items-center last:flex-none">
+              <div className="flex shrink-0 flex-col items-center gap-1">
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-black transition-colors ${
+                    active || done ? "bg-lgred text-white" : "bg-[#e8e8f1] text-slate-400"
+                  }`}
+                >
+                  {item.id}
+                </div>
+                <span
+                  className={`text-[10px] font-black leading-none ${
+                    active || done ? "text-lgred" : "text-slate-400"
+                  }`}
+                >
+                  {item.label}
+                </span>
+              </div>
+              {index < steps.length - 1 ? (
+                <div
+                  className={`mx-1.5 mb-4 h-[3px] flex-1 rounded-full ${
+                    done ? "bg-lgred/70" : "bg-[#e1e1eb]"
+                  }`}
+                />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function OngoingReservationHeader({ step }: { step: "ongoing" | "tracking" | "credit" }) {
+  const title =
+    step === "ongoing" ? "진행 중인 예약" : step === "tracking" ? "진행 중인 예약 · 수거 진행" : "진행 중인 예약 · 보상 단계";
+  const description =
+    step === "ongoing"
+      ? "예약 정보 확인, STEP 4 크루 이동 확인, STEP 5 크레딧 보상 확인으로 이어지는 전용 화면입니다."
+      : step === "tracking"
+      ? "크루 이동, 수거 진행, GPS 추적을 한 화면에서 확인합니다."
+      : "수거 완료 이후 검수, 최종 보상가, 크레딧 발급 단계를 이어서 확인합니다.";
+
+  return (
+    <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
+      <p className="text-xs font-black text-lgred">ONGOING RESERVATION</p>
+      <p className="mt-1 text-sm font-black text-ink">{title}</p>
+      <p className="mt-1 text-[11px] font-semibold leading-5 text-slate-500">{description}</p>
+    </div>
+  );
+}
+
 function getContentClassName(step: SwapStep) {
   if (step === "intro") {
     return "phone-scroll relative z-10 flex-1 overflow-y-auto px-0 pb-0";
@@ -1181,7 +1301,8 @@ function getProgressStep(step: SwapStep) {
     case "valuation":
       return 2;
     case "booking":
-    case "reservation":
+    case "reservationComplete":
+    case "ongoing":
       return 3;
     case "tracking":
       return 4;
