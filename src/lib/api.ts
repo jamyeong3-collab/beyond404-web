@@ -1,10 +1,14 @@
 import type { SwapRequest } from "@/types/swap";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  (typeof window === "undefined"
-    ? "http://127.0.0.1:8080"
-    : `${window.location.protocol}//${window.location.hostname}:8080`);
+function resolveApiBaseUrl() {
+  if (typeof window === "undefined") {
+    return process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8080";
+  }
+
+  return "";
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -29,6 +33,17 @@ export type PickupLocationPayload = {
   pickupLng: number;
 };
 
+export type CapturePayload = {
+  exteriorPhotoFileName: string;
+  labelPhotoFileName: string;
+  agreedToCreditPolicy: boolean;
+  applianceType: string;
+  brand: string;
+  modelName: string;
+  estimatedAge: string;
+  exteriorCondition: string;
+};
+
 export type BookingPayload = PickupLocationPayload & {
   bookingDate?: string;
   bookingTime?: string;
@@ -45,10 +60,29 @@ export function createSwapRequest(applianceType = "washing_machine") {
   });
 }
 
-export function analyzePhoto(id: number, fileName: string, applianceType = "washing_machine") {
+export function analyzePhoto(id: number, payload: CapturePayload) {
   return request<SwapRequest>(`/api/swap-requests/${id}/photos`, {
     method: "POST",
-    body: JSON.stringify({ fileName, applianceType }),
+    body: JSON.stringify({
+      fileName: payload.exteriorPhotoFileName,
+      exteriorPhotoFileName: payload.exteriorPhotoFileName,
+      labelPhotoFileName: payload.labelPhotoFileName,
+      applianceType: payload.applianceType,
+      agreedToCreditPolicy: payload.agreedToCreditPolicy,
+    }),
+  });
+}
+
+export function updateAppliance(id: number, payload: CapturePayload) {
+  return request<SwapRequest>(`/api/swap-requests/${id}/appliance`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      applianceType: payload.applianceType,
+      brand: payload.brand,
+      modelName: payload.modelName,
+      estimatedAge: payload.estimatedAge,
+      exteriorCondition: payload.exteriorCondition,
+    }),
   });
 }
 

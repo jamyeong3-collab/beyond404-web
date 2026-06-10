@@ -29,16 +29,20 @@ import type { BookingSelection } from "@/features/booking/BookingPanel";
 import { OngoingReservationPanel } from "@/features/booking/OngoingReservationPanel";
 import { ReservationCompletePanel } from "@/features/booking/ReservationCompletePanel";
 import { CapturePanel } from "@/features/capture/CapturePanel";
+import type { CaptureSubmission } from "@/features/capture/CapturePanel";
 import { CreditPanel } from "@/features/credit/CreditPanel";
 import { AnalyzingPanel } from "@/features/inspection/AnalyzingPanel";
 import { PreValuationPanel } from "@/features/pre-valuation/PreValuationPanel";
+import { PurchasePanel } from "@/features/purchase/PurchasePanel";
 import { TrackingPanel } from "@/features/tracking/TrackingPanel";
 import {
+  acceptPreValuation,
   analyzePhoto,
   completeFinalValuation,
   confirmBooking,
   createSwapRequest,
   requestInstantCall,
+  updateAppliance,
 } from "@/lib/api";
 import type { SwapRequest } from "@/types/swap";
 
@@ -47,6 +51,7 @@ type SwapStep =
   | "capture"
   | "analyzing"
   | "valuation"
+  | "market"
   | "booking"
   | "reservationComplete"
   | "ongoing"
@@ -118,6 +123,7 @@ export default function HomePage() {
   const [swapStep, setSwapStep] = useState<SwapStep>("intro");
   const [selectedAppliance, setSelectedAppliance] = useState<ApplianceId>(applianceOptions[0].id);
   const [fileName, setFileName] = useState("");
+  const [selectedPurchaseProductId, setSelectedPurchaseProductId] = useState<"washer" | "fridge" | "aircon" | null>(null);
   const [swapRequest, setSwapRequest] = useState<SwapRequest | null>(null);
   const [activeReservationRequest, setActiveReservationRequest] = useState<SwapRequest | null>(null);
   const [homeSwapStatus, setHomeSwapStatus] = useState<HomeSwapStatus>("none");
@@ -151,9 +157,29 @@ export default function HomePage() {
   });
 
   const analyzeMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (submission: CaptureSubmission) => {
       const current = swapRequest ?? (await createSwapRequest(selectedAppliance));
-      return analyzePhoto(current.id, fileName, selectedAppliance);
+      const analyzed = await analyzePhoto(current.id, {
+        exteriorPhotoFileName: submission.exteriorPhotoFileName,
+        labelPhotoFileName: submission.labelPhotoFileName,
+        agreedToCreditPolicy: submission.agreedToCreditPolicy,
+        applianceType: submission.applianceType,
+        brand: submission.brand,
+        modelName: submission.modelName,
+        estimatedAge: submission.estimatedAge,
+        exteriorCondition: submission.exteriorCondition,
+      });
+
+      return updateAppliance(analyzed.id, {
+        exteriorPhotoFileName: submission.exteriorPhotoFileName,
+        labelPhotoFileName: submission.labelPhotoFileName,
+        agreedToCreditPolicy: submission.agreedToCreditPolicy,
+        applianceType: submission.applianceType,
+        brand: submission.brand,
+        modelName: submission.modelName,
+        estimatedAge: submission.estimatedAge,
+        exteriorCondition: submission.exteriorCondition,
+      });
     },
     onSuccess: (data) => {
       setSwapRequest(data);
@@ -216,17 +242,42 @@ export default function HomePage() {
     },
   });
 
+  const acceptValuationMutation = useMutation({
+    mutationFn: async (nextStep: "market" | "booking") => {
+      if (!swapRequest) {
+        throw new Error("Swap request is required");
+      }
+
+      const accepted =
+        swapRequest.status === "PRE_VALUATION_ACCEPTED"
+          ? swapRequest
+          : await acceptPreValuation(swapRequest.id);
+
+      return { accepted, nextStep };
+    },
+    onSuccess: ({ accepted, nextStep }) => {
+      setSwapRequest(accepted);
+      setSwapStep(nextStep);
+    },
+  });
+
   const isBusy =
     createMutation.isPending ||
     analyzeMutation.isPending ||
+    acceptValuationMutation.isPending ||
     bookingMutation.isPending ||
     creditMutation.isPending;
 
   const error =
-    createMutation.error ?? analyzeMutation.error ?? bookingMutation.error ?? creditMutation.error;
+    createMutation.error ??
+    analyzeMutation.error ??
+    acceptValuationMutation.error ??
+    bookingMutation.error ??
+    creditMutation.error;
 
   const resetExchangeFlow = () => {
     setFileName("");
+    setSelectedPurchaseProductId(null);
     setSwapRequest(null);
     setSelectedAppliance(applianceOptions[0].id);
     setSwapStep("intro");
@@ -313,11 +364,15 @@ export default function HomePage() {
                   onApplianceChange={setSelectedAppliance}
                   onStart={() => setSwapStep("capture")}
                   onFileChange={setFileName}
-                  onAnalyze={() => {
+                  onAnalyze={(submission) => {
+                    setFileName(submission.exteriorPhotoFileName);
                     setSwapStep("analyzing");
-                    analyzeMutation.mutate();
+                    analyzeMutation.mutate(submission);
                   }}
-                  onValuationNext={() => setSwapStep("booking")}
+                  onValuationNext={() => acceptValuationMutation.mutate("booking")}
+                  onOpenPurchaseFlow={() => acceptValuationMutation.mutate("market")}
+                  selectedPurchaseProductId={selectedPurchaseProductId}
+                  onSelectPurchaseProduct={setSelectedPurchaseProductId}
                   onBooking={(booking) => bookingMutation.mutate(booking)}
                   onComplete={() => {
                     setHomeSwapStatus("reviewPending");
@@ -399,8 +454,10 @@ function previousStep(step: SwapStep): SwapStep {
       return "capture";
     case "valuation":
       return "capture";
-    case "booking":
+    case "market":
       return "valuation";
+    case "booking":
+      return "market";
     case "reservationComplete":
     case "ongoing":
       return "booking";
@@ -1016,8 +1073,11 @@ function SwapItFeatureScreen(props: {
   onApplianceChange: (appliance: ApplianceId) => void;
   onStart: () => void;
   onFileChange: (fileName: string) => void;
-  onAnalyze: () => void;
+  onAnalyze: (submission: CaptureSubmission) => void;
   onValuationNext: () => void;
+  onOpenPurchaseFlow: () => void;
+  selectedPurchaseProductId: "washer" | "fridge" | "aircon" | null;
+  onSelectPurchaseProduct: (productId: "washer" | "fridge" | "aircon" | null) => void;
   onBooking: (booking: BookingSelection) => void;
   onComplete: () => void;
   onFinalize: () => void;
@@ -1109,7 +1169,21 @@ function SwapItFeatureScreen(props: {
         ) : null}
         {props.step === "analyzing" ? <AnalyzingPanel applianceLabel={selectedLabel} /> : null}
         {props.step === "valuation" ? (
-          <PreValuationPanel swapRequest={props.swapRequest} onNext={props.onValuationNext} />
+          <PreValuationPanel
+            loading={props.isBusy}
+            onNext={props.onValuationNext}
+            onOpenPurchase={props.onOpenPurchaseFlow}
+            swapRequest={props.swapRequest}
+          />
+        ) : null}
+        {props.step === "market" ? (
+          <PurchasePanel
+            estimatedCredit={Math.round(((props.swapRequest?.preValuation.minEstimatedValue ?? 0) + (props.swapRequest?.preValuation.maxEstimatedValue ?? 0)) / 2)}
+            selectedProductId={props.selectedPurchaseProductId}
+            onSelectProduct={(productId) => props.onSelectPurchaseProduct(productId)}
+            onContinueToBooking={props.onValuationNext}
+            onSkip={props.onValuationNext}
+          />
         ) : null}
         {props.step === "booking" ? (
           <BookingPanel
@@ -1299,6 +1373,7 @@ function getProgressStep(step: SwapStep) {
       return 1;
     case "analyzing":
     case "valuation":
+    case "market":
       return 2;
     case "booking":
     case "reservationComplete":

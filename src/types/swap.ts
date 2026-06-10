@@ -13,6 +13,19 @@ export type SwapRequest = {
     aiConfidence?: number;
     uploadedFileName: string | null;
   };
+  userConsent?: {
+    agreedToCreditPolicy: boolean;
+    notice: string;
+    agreedAt?: string | null;
+  } | null;
+  captureEvidence?: {
+    exteriorPhotoFileName?: string | null;
+    labelPhotoFileName?: string | null;
+    pickupPhotoFileName?: string | null;
+    hubPhotoFileName?: string | null;
+    pickupInspectionMemo?: string | null;
+    hubMemo?: string | null;
+  } | null;
   preValuation: {
     minEstimatedValue: number;
     maxEstimatedValue: number;
@@ -35,6 +48,24 @@ export type SwapRequest = {
     crewName: string | null;
     address: string | null;
     scheduledAt: string;
+    nearbyCrews?: {
+      crewId: number | null;
+      crewName: string;
+      status: string;
+      lat: number;
+      lng: number;
+      distanceMeters: number;
+      assigned: boolean;
+    }[];
+  } | null;
+  dispatchInfo?: {
+    alertMessage: string;
+    matchScore: number;
+    priorityRank: number;
+    rejectCount: number;
+    cancelCount: number;
+    penaltyCount: number;
+    recommendedReason: string;
   } | null;
   tracking: {
     message: string;
@@ -46,6 +77,26 @@ export type SwapRequest = {
       speed: number;
       updatedAt: string;
     } | null;
+    processingCenter?: {
+      label: string;
+      lat: number;
+      lng: number;
+    } | null;
+    phase?: string;
+    metrics?: {
+      crewToPickupMeters: number | null;
+      crewToProcessingCenterMeters: number | null;
+      locationLive: boolean;
+    } | null;
+    nearbyCrews?: {
+      crewId: number | null;
+      crewName: string;
+      status: string;
+      lat: number;
+      lng: number;
+      distanceMeters: number;
+      assigned: boolean;
+    }[];
     events?: {
       eventType: string;
       message: string;
@@ -72,6 +123,14 @@ export type SwapRequest = {
     summary: string;
     steps: string[];
   };
+  settlement?: {
+    baseFee: number | null;
+    distanceFee: number | null;
+    incentive: number | null;
+    penalty: number | null;
+    totalAmount: number | null;
+    status: string;
+  } | null;
   notifications?: {
     notificationId: number;
     title: string;

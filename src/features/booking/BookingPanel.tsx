@@ -1,13 +1,17 @@
 "use client";
 
+import { GoogleMap, MarkerF, useJsApiLoader } from "@/components/maps/google-maps-compat";
 import type { SwapRequest } from "@/types/swap";
 import {
   ArrowLeft,
   CalendarCheck,
   CheckCircle2,
   Clock,
+  Crosshair,
   Loader2,
   MapPin,
+  Navigation,
+  Search,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -49,9 +53,15 @@ const availableDays = [10, 11, 12, 13, 14, 17, 18, 19, 21, 24, 26, 28];
 const timeSlots = ["09:00", "11:00", "13:00", "15:00", "17:00"] as const;
 const defaultPickupCoords = { lat: 37.5665, lng: 126.978 };
 const defaultAddress = "서울특별시 중구 세종대로 110";
+const quickPlaceChips = ["집", "회사", "홍대입구역", "연남동"];
+const loadingAddressText = "현재 위치를 확인하는 중입니다.";
 
 function formatBookingDate(day: number) {
   return `2026-06-${String(day).padStart(2, "0")}`;
+}
+
+function compactAddress(address: string) {
+  return address.split(",")[0]?.trim() || address;
 }
 
 async function reverseGeocode(latitude: number, longitude: number) {
@@ -111,13 +121,12 @@ export function BookingPanel({ swapRequest, loading, onBooking }: BookingPanelPr
         STEP 3. 수거 예약
       </div>
       <p className="mt-1 text-xs leading-5 text-slate-500">
-        시간 예약은 주소를 입력해 예약을 확정하고, 바로 콜은 현재 위치 또는 직접 입력한 주소를 기준으로
-        근처 수거 크루를 찾습니다.
+        시간 예약은 날짜와 주소를 정해서 진행하고, 바로콜은 현재 위치를 기준으로 가장 가까운 수거 크루를 찾습니다.
       </p>
 
       <div className="mt-3 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
         <ModeButton active={mode === "schedule"} label="시간 예약" onClick={() => setMode("schedule")} />
-        <ModeButton active={mode === "call"} label="바로 콜" onClick={() => setMode("call")} />
+        <ModeButton active={mode === "call"} label="바로콜" onClick={() => setMode("call")} />
       </div>
 
       <div className="mt-3 min-h-0 flex-1">
@@ -142,7 +151,7 @@ function ModeButton({
 }) {
   return (
     <button
-      className={`h-9 rounded-xl text-xs font-black transition ${
+      className={`h-10 rounded-xl text-sm font-black transition ${
         active ? "bg-white text-lgred shadow-sm" : "text-slate-500"
       }`}
       onClick={onClick}
@@ -174,7 +183,7 @@ function ScheduleBooking({
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between">
           <button
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-ink"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-ink"
             onClick={() => setStage("calendar")}
             type="button"
           >
@@ -190,7 +199,7 @@ function ScheduleBooking({
           <div className="flex items-start gap-2">
             <Clock className="mt-0.5 shrink-0 text-lgred" size={18} />
             <p className="text-xs font-semibold leading-5 text-slate-600">
-              수거 시간을 고른 뒤 주소와 상세 주소를 입력하고 예약하기를 누르면 바로 예약이 확정됩니다.
+              시간을 고른 뒤 수거 주소와 상세 위치를 입력하면 예약이 바로 확정됩니다.
             </p>
           </div>
         </div>
@@ -201,7 +210,7 @@ function ScheduleBooking({
             return (
               <button
                 key={time}
-                className={`h-10 rounded-xl border text-sm font-black ${
+                className={`h-11 rounded-xl border text-sm font-black ${
                   active ? "border-lgred bg-lgred text-white" : "border-slate-200 bg-slate-50 text-ink"
                 }`}
                 onClick={() => setSelectedTime(time)}
@@ -222,7 +231,7 @@ function ScheduleBooking({
         />
 
         <button
-          className="mt-3 h-12 w-full rounded-xl bg-lgred text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="mt-4 h-12 w-full rounded-xl bg-lgred text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
           disabled={!canBook || loading || !pickupAddress.trim()}
           onClick={() => {
             const bookingDate = formatBookingDate(selectedDay);
@@ -270,7 +279,7 @@ function ScheduleBooking({
           return (
             <button
               key={day}
-              className={`h-8 rounded-xl text-xs font-black transition ${
+              className={`h-9 rounded-xl text-xs font-black transition ${
                 active
                   ? "bg-lgred text-white"
                   : available
@@ -290,11 +299,11 @@ function ScheduleBooking({
         })}
       </div>
 
-      <div className="mt-3 rounded-2xl bg-slate-50 p-3">
+      <div className="mt-4 rounded-2xl bg-slate-50 p-4">
         <div className="flex items-start gap-2">
           <CheckCircle2 className="mt-0.5 shrink-0 text-lgred" size={18} />
           <p className="text-xs font-semibold leading-5 text-slate-600">
-            날짜를 선택하면 수거 시간과 주소를 입력하는 단계로 이동합니다.
+            날짜를 고르면 시간 선택과 수거 위치 입력 단계로 이어집니다.
           </p>
         </div>
       </div>
@@ -313,12 +322,16 @@ function InstantCallBooking({
 }) {
   const [stage, setStage] = useState<CallStage>("ready");
   const [pickupMethod, setPickupMethod] = useState<CallPickupMethod>("gps");
-  const [pickupAddress, setPickupAddress] = useState("현재 위치를 확인 중입니다.");
+  const [pickupAddress, setPickupAddress] = useState(loadingAddressText);
   const [detailAddress, setDetailAddress] = useState("");
   const [pickupCoords, setPickupCoords] = useState<PickupCoordinates | null>(null);
   const [manualCoords, setManualCoords] = useState<PickupCoordinates | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+
+  const activeCoords = pickupMethod === "gps" ? pickupCoords : manualCoords;
+  const displayAddress = pickupMethod === "gps" ? pickupAddress : pickupAddress || "직접 주소를 입력해 주세요.";
+  const mapAddress = pickupAddress === loadingAddressText ? "위치를 찾는 중..." : compactAddress(pickupAddress);
 
   const detectCurrentLocation = async () => {
     if (!("geolocation" in navigator)) {
@@ -370,7 +383,7 @@ function InstantCallBooking({
   const startMatching = async () => {
     let finalAddress = pickupAddress.trim();
     let finalDetail = detailAddress.trim();
-    let finalCoords = pickupMethod === "gps" ? pickupCoords : manualCoords;
+    let finalCoords = activeCoords;
 
     if (pickupMethod === "gps") {
       const locationReady = finalCoords ? true : await detectCurrentLocation();
@@ -418,14 +431,50 @@ function InstantCallBooking({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="rounded-[24px] border border-slate-200 bg-white p-4">
-        <p className="text-xs font-black text-slate-400">현재 위치 기반 바로 콜</p>
-        <p className="mt-1 text-sm font-black text-ink">
-          현재 GPS를 사용하거나 직접 주소를 입력해서 근처 수거 크루를 바로 찾을 수 있습니다.
-        </p>
+      <div className="relative overflow-hidden rounded-[28px] bg-slate-100 shadow-sm">
+        <PickupPreviewMap
+          addressLabel={mapAddress}
+          coordinates={activeCoords}
+          locating={locating}
+        />
+        <div className="absolute bottom-4 left-4 right-4 rounded-[26px] bg-white/96 p-4 shadow-xl backdrop-blur">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-black text-slate-400">바로콜 출발 위치</p>
+              <p className="mt-1 line-clamp-2 text-xl font-black leading-tight text-ink">
+                {pickupMethod === "gps" ? "현재 위치" : "입력한 주소"}
+              </p>
+            </div>
+            <button
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 text-ink"
+              onClick={() => void detectCurrentLocation()}
+              type="button"
+            >
+              <Crosshair size={18} />
+            </button>
+          </div>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{displayAddress}</p>
+          {activeCoords ? (
+            <p className="mt-2 text-xs font-bold text-slate-400">
+              {activeCoords.lat.toFixed(5)}, {activeCoords.lng.toFixed(5)}
+            </p>
+          ) : null}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {quickPlaceChips.map((chip, index) => (
+              <span
+                key={chip}
+                className={`rounded-full px-4 py-2 text-sm font-black ${
+                  index === 0 ? "bg-slate-100 text-ink" : "border border-slate-200 bg-white text-slate-500"
+                }`}
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
+      <div className="mt-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
         <ModeButton
           active={pickupMethod === "gps"}
           label="현재 위치"
@@ -446,25 +495,29 @@ function InstantCallBooking({
       </div>
 
       {pickupMethod === "gps" ? (
-        <div className="mt-3 rounded-2xl bg-slate-50 p-4">
-          <div className="flex items-start gap-2">
-            <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-lgred/10 text-lgred">
-              <MapPin size={17} />
+        <div className="mt-4 rounded-3xl bg-slate-50 p-4">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-lgred/10 text-lgred">
+              <Navigation size={18} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-black text-ink">현재 위치</p>
-              <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                {locating ? "GPS 위치를 확인 중입니다..." : pickupAddress}
+              <p className="text-xs font-black text-slate-400">내 위치 확인</p>
+              <p className="mt-1 text-base font-black leading-6 text-ink">
+                {locating ? "GPS 위치를 확인 중입니다..." : compactAddress(displayAddress)}
               </p>
-              {pickupCoords ? (
-                <p className="mt-1 text-[11px] font-bold text-slate-400">
-                  {pickupCoords.lat.toFixed(5)}, {pickupCoords.lng.toFixed(5)}
-                </p>
-              ) : null}
+              <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                {detailAddress || "필요하면 상세 위치를 추가해 주세요."}
+              </p>
             </div>
           </div>
+          <input
+            className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-ink outline-none focus:border-lgred"
+            value={detailAddress}
+            onChange={(event) => setDetailAddress(event.target.value)}
+            placeholder="예: 건물 앞, 지하주차장 입구"
+          />
           <button
-            className="mt-3 h-10 w-full rounded-xl border border-lgred/20 bg-white text-xs font-black text-lgred"
+            className="mt-3 h-11 w-full rounded-2xl border border-lgred/20 bg-white text-sm font-black text-lgred"
             onClick={() => void detectCurrentLocation()}
             type="button"
           >
@@ -473,7 +526,7 @@ function InstantCallBooking({
         </div>
       ) : (
         <LocationEditor
-          address={pickupAddress === "현재 위치를 확인 중입니다." ? "" : pickupAddress}
+          address={pickupAddress === loadingAddressText ? "" : pickupAddress}
           detailAddress={detailAddress}
           onAddressChange={setPickupAddress}
           onCoordinateChange={setManualCoords}
@@ -482,59 +535,140 @@ function InstantCallBooking({
       )}
 
       {locationError ? (
-        <p className="mt-3 rounded-2xl bg-red-50 px-3 py-3 text-xs font-bold leading-5 text-red-600">
+        <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-xs font-bold leading-5 text-red-600">
           {locationError}
         </p>
       ) : null}
 
       {stage === "ready" ? (
         <button
-          className="mt-3 h-12 w-full rounded-xl bg-lgred text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="mt-4 h-[52px] w-full rounded-2xl bg-[#202632] text-base font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
           disabled={!canBook || locating}
           onClick={() => void startMatching()}
           type="button"
         >
-          근처 수거크루 찾기
+          근처 수거 크루 찾기
         </button>
       ) : null}
 
       {stage === "searching" ? (
-        <div className="mt-3 rounded-2xl bg-lgred/5 p-4 text-center">
-          <Loader2 className="mx-auto animate-spin text-lgred" size={24} />
-          <p className="mt-2 text-sm font-black text-ink">수거 크루를 찾는 중입니다</p>
-          <p className="mt-1 text-xs font-semibold text-slate-500">
-            선택한 위치를 기준으로 근처 수거 크루를 매칭하고 있습니다.
+        <div className="mt-4 rounded-3xl bg-[#202632] px-4 py-5 text-center text-white">
+          <Loader2 className="mx-auto animate-spin" size={24} />
+          <p className="mt-3 text-base font-black">근처 수거 크루를 찾고 있어요</p>
+          <p className="mt-1 text-xs font-semibold text-white/70">
+            선택한 위치를 기준으로 가장 가까운 크루를 연결하고 있습니다.
           </p>
         </div>
       ) : null}
 
       {stage === "matched" ? (
         <>
-          <div className="mt-3 rounded-2xl border border-lgred/10 bg-lgred/5 p-4">
+          <div className="mt-4 rounded-3xl border border-lgred/10 bg-lgred/5 p-4">
             <p className="text-xs font-black text-lgred">매칭 완료</p>
-            <p className="mt-1 text-sm font-black text-ink">LG 수거 크루가 배정되었습니다.</p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">예상 도착 시간 약 12분</p>
+            <p className="mt-1 text-lg font-black text-ink">LG 수거 크루가 배정되었습니다</p>
+            <p className="mt-1 text-sm font-semibold text-slate-500">예상 도착 시간 약 12분</p>
           </div>
           <button
-            className="mt-3 h-12 w-full rounded-xl bg-lgred text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
-            disabled={!canBook || loading || !(pickupMethod === "gps" ? pickupCoords : manualCoords)}
+            className="mt-4 h-[52px] w-full rounded-2xl bg-lgred text-base font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={!canBook || loading || !activeCoords}
             onClick={() =>
               onBooking({
                 mode: "call",
-                reservedAt: "바로 콜 매칭 완료",
+                reservedAt: "바로콜 매칭 완료",
                 pickupAddress,
                 detailAddress: detailAddress || (pickupMethod === "gps" ? "현재 위치" : ""),
-                pickupLat: pickupMethod === "gps" ? pickupCoords?.lat : manualCoords?.lat,
-                pickupLng: pickupMethod === "gps" ? pickupCoords?.lng : manualCoords?.lng,
+                pickupLat: activeCoords?.lat,
+                pickupLng: activeCoords?.lng,
               })
             }
             type="button"
           >
-            {loading ? "수거 확정 중..." : "매칭된 크루로 수거 확정"}
+            {loading ? "수거 연결 중..." : "이 위치로 바로콜 요청"}
           </button>
         </>
       ) : null}
     </div>
+  );
+}
+
+function PickupPreviewMap({
+  addressLabel,
+  coordinates,
+  locating,
+}: {
+  addressLabel: string;
+  coordinates: PickupCoordinates | null;
+  locating: boolean;
+}) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+  if (!apiKey || !coordinates) {
+    return (
+      <div className="relative h-[360px] bg-[radial-gradient(circle_at_72%_24%,rgba(255,184,0,.25),transparent_18%),linear-gradient(180deg,#f5f6f8,#e8edf3)]">
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(148,163,184,.16)_1px,transparent_1px),linear-gradient(0deg,rgba(148,163,184,.16)_1px,transparent_1px)] bg-[length:28px_28px]" />
+        <span className="absolute left-[64%] top-0 h-full w-16 bg-[#f7ebbe]/70" />
+        <span className="absolute bottom-[26%] left-0 right-0 h-16 bg-[#f7ebbe]/70" />
+        <span className="absolute bottom-[43%] left-[58%] h-16 w-16 rotate-45 bg-[#f7ebbe]/70" />
+        <div className="absolute left-[54%] top-[35%] z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-[#1f6fff] text-white shadow-xl">
+          <MapPin size={22} />
+        </div>
+        <div className="absolute left-4 top-4 rounded-full bg-white/95 px-4 py-2 text-sm font-black text-ink shadow">
+          {locating ? "현재 위치 확인 중" : addressLabel}
+        </div>
+      </div>
+    );
+  }
+
+  return <GooglePickupMap apiKey={apiKey} coordinates={coordinates} />;
+}
+
+function GooglePickupMap({
+  apiKey,
+  coordinates,
+}: {
+  apiKey: string;
+  coordinates: PickupCoordinates;
+}) {
+  const { isLoaded, loadError } = useJsApiLoader({ googleMapsApiKey: apiKey });
+
+  if (loadError) {
+    return (
+      <div className="relative h-[360px] bg-[radial-gradient(circle_at_72%_24%,rgba(255,184,0,.25),transparent_18%),linear-gradient(180deg,#f5f6f8,#e8edf3)]">
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(148,163,184,.16)_1px,transparent_1px),linear-gradient(0deg,rgba(148,163,184,.16)_1px,transparent_1px)] bg-[length:28px_28px]" />
+        <span className="absolute left-[64%] top-0 h-full w-16 bg-[#f7ebbe]/70" />
+        <span className="absolute bottom-[26%] left-0 right-0 h-16 bg-[#f7ebbe]/70" />
+        <span className="absolute bottom-[43%] left-[58%] h-16 w-16 rotate-45 bg-[#f7ebbe]/70" />
+        <div className="absolute left-[54%] top-[35%] z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-[#1f6fff] text-white shadow-xl">
+          <MapPin size={22} />
+        </div>
+        <div className="absolute left-4 top-4 rounded-full bg-white/95 px-4 py-2 text-sm font-black text-ink shadow">
+          지도 로딩 오류
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoaded) {
+    return <div className="h-[360px] animate-pulse bg-slate-100" />;
+  }
+
+  return (
+    <GoogleMap
+      center={coordinates}
+      mapContainerClassName="h-[360px] w-full"
+      options={{
+        clickableIcons: false,
+        disableDefaultUI: true,
+        gestureHandling: "greedy",
+        styles: [
+          { featureType: "poi", stylers: [{ visibility: "off" }] },
+          { featureType: "transit", stylers: [{ visibility: "off" }] },
+        ],
+      }}
+      zoom={16}
+    >
+      <MarkerF position={coordinates} label={{ color: "#ffffff", fontWeight: "900", text: "내 위치" }} />
+    </GoogleMap>
   );
 }
 
@@ -626,27 +760,27 @@ function LocationEditor({
   };
 
   return (
-    <div className="mt-3 rounded-2xl bg-slate-50 p-3">
-      <div className="mb-2 flex items-center gap-2">
-        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-lgred/10 text-lgred">
-          <MapPin size={17} />
+    <div className="mt-4 rounded-3xl bg-slate-50 p-4">
+      <div className="mb-3 flex items-center gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-lgred/10 text-lgred">
+          <Search size={18} />
         </span>
         <div>
-          <p className="text-xs font-black text-ink">수거 주소</p>
-          <p className="text-[11px] font-semibold text-slate-400">
-            주소와 상세 주소를 입력하면 수거 위치가 등록됩니다.
+          <p className="text-sm font-black text-ink">수거 위치 직접 입력</p>
+          <p className="text-xs font-semibold text-slate-400">
+            주소와 상세 위치를 입력하면 수거 지점을 정확히 저장할 수 있습니다.
           </p>
         </div>
       </div>
 
       <input
-        className="h-10 w-full rounded-xl border border-lgred/20 bg-white px-3 text-xs font-bold text-ink outline-none focus:border-lgred"
+        className="h-11 w-full rounded-2xl border border-lgred/20 bg-white px-4 text-sm font-semibold text-ink outline-none focus:border-lgred"
         value={selectedAddress}
         onChange={(event) => handleAddressInput(event.target.value)}
-        placeholder="주소를 검색하거나 도로명 주소를 입력해 주세요"
+        placeholder="주소를 검색하거나 직접 입력해 주세요"
       />
       <input
-        className="mt-2 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-ink outline-none focus:border-lgred"
+        className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-ink outline-none focus:border-lgred"
         value={detailAddress}
         onChange={(event) => onDetailAddressChange(event.target.value)}
         placeholder="상세 주소를 입력해 주세요"
@@ -660,21 +794,21 @@ function LocationEditor({
           </div>
         ) : selectedAddress.trim().length >= 3 && suggestions.length === 0 && selectedAddress !== lockedAddress ? (
           <p className="px-1 text-[11px] font-semibold text-slate-400">
-            검색 결과가 없으면 입력한 주소 그대로 계속 진행할 수 있습니다.
+            검색 결과가 없으면 입력한 주소 그대로 진행할 수 있습니다.
           </p>
         ) : null}
       </div>
 
       {suggestions.length > 0 ? (
-        <div className="mt-2 max-h-32 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="mt-3 max-h-36 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
           {suggestions.map((suggestion) => (
             <button
               key={`${suggestion.lat}-${suggestion.lon}-${suggestion.display_name}`}
-              className="block w-full border-b border-slate-100 px-3 py-2 text-left last:border-b-0"
+              className="block w-full border-b border-slate-100 px-4 py-3 text-left last:border-b-0"
               onClick={() => handleSuggestionSelect(suggestion)}
               type="button"
             >
-              <span className="line-clamp-2 text-[11px] font-bold leading-4 text-ink">
+              <span className="line-clamp-2 text-[12px] font-bold leading-5 text-ink">
                 {suggestion.display_name}
               </span>
             </button>
