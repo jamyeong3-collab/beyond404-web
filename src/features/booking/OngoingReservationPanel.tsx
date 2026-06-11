@@ -29,20 +29,23 @@ export function OngoingReservationPanel({
   onOpenTracking,
   onOpenCredit,
 }: OngoingReservationPanelProps) {
-  const canOpenCredit =
+  const pickupCompleted =
     status === "reviewPending" ||
     status === "reviewCompleted" ||
     status === "reReviewPending" ||
     status === "reReviewCompleted";
 
-  const trackingDescription =
-    status === "reserved"
-      ? "예약된 수거 일정 기준으로 크루 배정 후 이동 상태를 확인할 수 있습니다."
+  const canOpenCredit = pickupCompleted;
+
+  const trackingDescription = pickupCompleted
+    ? "수거와 e-waste 공장 전달까지 완료되어 안심처리 상태를 확인할 수 있습니다."
+    : status === "reserved"
+      ? "예약된 수거 일정 기준으로 크루 배정 및 이동 상태를 확인할 수 있습니다."
       : "배정된 수거 크루의 이동 상태와 수거 진행 상황을 확인할 수 있습니다.";
 
   const creditDescription = canOpenCredit
-    ? "수거 완료 후 최종 감정 결과와 크레딧 보상 단계를 확인할 수 있습니다."
-    : "크레딧 보상은 수거 완료 후 STEP 5에서 확인할 수 있습니다.";
+    ? "수거 완료 후 확정된 보상과 등급 상태를 전체 보상 화면에서 확인할 수 있습니다."
+    : "전체 보상 확인은 수거 완료 후 활성화됩니다.";
 
   return (
     <section className="flex h-full flex-col rounded-[28px] bg-white p-5 shadow-sm">
@@ -58,7 +61,7 @@ export function OngoingReservationPanel({
         <p className="mt-4 text-xs font-black text-lgred">수거 예약이 완료되었습니다</p>
         <h2 className="mt-2 text-2xl font-black text-ink">{reservationLabel || "예약 시간 확인 중"}</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          여기서 예약 정보를 확인하고, STEP 4 수거 진행 확인과 STEP 5 크레딧 보상 단계로 이어서 이동할 수 있습니다.
+          예약 정보 확인 후 크루 이동, 수거 진행, 전체 보상 확인 단계까지 이어서 볼 수 있습니다.
         </p>
       </div>
 
@@ -75,17 +78,23 @@ export function OngoingReservationPanel({
         <StageCard
           icon={<Truck size={18} />}
           stepLabel="STEP 4"
-          title="크루 이동 확인"
+          title={pickupCompleted ? "수거 및 처리 완료" : "크루 이동 확인"}
           description={trackingDescription}
-          buttonLabel={status === "pickup" ? "이동 중인 크루 확인" : "수거 진행 확인하기"}
+          buttonLabel={
+            pickupCompleted
+              ? "수거 및 처리 완료"
+              : status === "pickup"
+                ? "이동 중인 크루 확인"
+                : "수거 진행 확인하기"
+          }
           onClick={onOpenTracking}
         />
         <StageCard
           icon={<CreditCard size={18} />}
           stepLabel="STEP 5"
-          title="크레딧 보상 확인"
+          title="전체 보상 확인"
           description={creditDescription}
-          buttonLabel={canOpenCredit ? "크레딧 보상 확인하기" : "수거 완료 후 확인 가능"}
+          buttonLabel={canOpenCredit ? "전체 보상 확인하기" : "수거 완료 후 확인 가능"}
           disabled={!canOpenCredit}
           onClick={onOpenCredit}
         />

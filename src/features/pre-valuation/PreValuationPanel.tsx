@@ -1,3 +1,5 @@
+"use client";
+
 import type { SwapRequest } from "@/types/swap";
 import { Coins, Factory, ShoppingBag } from "lucide-react";
 import type { ReactNode } from "react";
@@ -15,10 +17,13 @@ export function PreValuationPanel({
   onOpenPurchase,
 }: PreValuationPanelProps) {
   const valuation = swapRequest?.preValuation;
-  const hasValuation = Boolean(valuation && valuation.minEstimatedValue > 0);
-  const midpoint = valuation
+  const rewardEstimate = swapRequest?.rewardEstimate;
+  const hasValuation = Boolean(valuation && valuation.maxEstimatedValue > 0);
+  const estimatedValue = valuation
     ? Math.round((valuation.minEstimatedValue + valuation.maxEstimatedValue) / 2)
     : 0;
+  const scrapValue = rewardEstimate?.scrapValue ?? estimatedValue;
+  const sizeGradeLabel = swapRequest?.appliance.sizeGrade ?? "미확정";
 
   return (
     <section className="rounded-[28px] bg-white p-5 shadow-sm">
@@ -30,12 +35,10 @@ export function PreValuationPanel({
       {hasValuation && valuation ? (
         <>
           <div className="mt-4 rounded-3xl bg-[#202632] p-5 text-white">
-            <p className="text-xs font-black text-white/60">순수 원자재 스크랩 가치 기반 예상 범위</p>
-            <p className="mt-2 text-3xl font-black">
-              {valuation.minEstimatedValue.toLocaleString()} ~ {valuation.maxEstimatedValue.toLocaleString()}원
-            </p>
+            <p className="text-xs font-black text-white/60">순수 원자재 스크랩 가치 기반 예상 가격</p>
+            <p className="mt-2 text-3xl font-black">{estimatedValue.toLocaleString()}원</p>
             <p className="mt-2 text-xs font-semibold text-white/70">
-              예상 평균 보상가 {midpoint.toLocaleString()}원을 기준으로 LG 교체 제품 할인에 반영됩니다.
+              예상 보상가 {estimatedValue.toLocaleString()}원을 기준으로 LG 교체 제품 할인에 반영됩니다.
             </p>
           </div>
 
@@ -44,22 +47,19 @@ export function PreValuationPanel({
               icon={<Factory size={18} />}
               title="스크랩 기준"
               value="금속/플라스틱"
-              description="분해 후 회수 가능한 자재 가치 반영"
+              description="분해 후 회수 가능한 자재 가치를 반영합니다."
             />
             <MetricCard
               icon={<ShoppingBag size={18} />}
               title="구매 할인 기준"
-              value={`${midpoint.toLocaleString()}원`}
-              description="LG 구매 페이지 할인 예상치"
+              value={`${estimatedValue.toLocaleString()}원`}
+              description="LG 구매 페이지 할인에 연결되는 예상 금액입니다."
             />
           </div>
 
           <div className="mt-4 space-y-2">
-            {valuation.basis.map((item) => (
-              <div key={item} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
-                {item}
-              </div>
-            ))}
+            <BasisRow label="반납 제품 크기 등급" value={sizeGradeLabel} />
+            <BasisRow label="스크랩 가치 기준" value={`${scrapValue.toLocaleString()}원`} />
           </div>
 
           <div className="mt-4 rounded-3xl bg-lgred/5 p-4">
@@ -76,7 +76,7 @@ export function PreValuationPanel({
             onClick={onOpenPurchase}
             type="button"
           >
-            LG 구매 페이지 보기
+            LG 가전 구매 페이지 보기
           </button>
         </>
       ) : (
@@ -107,6 +107,16 @@ function MetricCard({
       </div>
       <p className="mt-3 text-lg font-black text-ink">{value}</p>
       <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{description}</p>
+    </div>
+  );
+}
+
+function BasisRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+      <p className="text-sm font-semibold text-slate-600">
+        <span className="font-black text-ink">{label}:</span> {value}
+      </p>
     </div>
   );
 }

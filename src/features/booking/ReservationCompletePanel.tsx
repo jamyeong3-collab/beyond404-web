@@ -27,7 +27,7 @@ export function ReservationCompletePanel({
         <p className="mt-4 text-xs font-black text-lgred">수거 예약이 확정되었습니다</p>
         <h2 className="mt-2 text-2xl font-black text-ink">{reservationLabel || "예약 정보 확인 중"}</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          지금은 직접 나가거나, 예약 확인하기를 눌러 진행 중인 예약 화면으로 이동할 수 있습니다.
+          지금은 닫기로 돌아가거나, 예약 확인하기를 눌러 진행 중인 예약 화면으로 이동할 수 있습니다.
         </p>
       </div>
 
@@ -51,7 +51,7 @@ export function ReservationCompletePanel({
           onClick={onClose}
           type="button"
         >
-          나가기
+          닫기
         </button>
         <button
           className="h-12 rounded-xl bg-lgred text-sm font-black text-white"

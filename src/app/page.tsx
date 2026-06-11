@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -84,11 +84,11 @@ const marketProducts = [
     name: "LG 11Kg Front Load Washing Machine, AI Direct Drive",
     category: "세탁기",
     price: 62900,
-    benefit: "FHP1411Z9P 공식 LG India 상품",
-    description: "대용량 세탁에 맞춘 AI Direct Drive 기반 프론트 로드 세탁기입니다.",
+    benefit: "FHP1411Z9P 공식 LG India 제품",
+    description: "AI Direct Drive 기반의 11kg 프론트 로드 세탁기입니다.",
     imageUrl: "https://www.lg.com/content/dam/channel/wcms/in/images/washing-machines/fhp1411z9p_apsqeil_eail_in_c/gallery/FHP1411Z9P-450x450-1.jpg",
     productUrl: "https://www.lg.com/in/laundry/front-loading-washing-machines/fhp1411z9p/",
-    specs: ["11kg 대용량", "AI Direct Drive", "Steam+", "5 Star 효율"],
+    specs: ["11kg", "AI Direct Drive", "Steam+", "5 Star"],
     icon: WashingMachine,
   },
   {
@@ -96,11 +96,11 @@ const marketProducts = [
     name: "LG 398L Double Door Refrigerator, Convertible, Wi-Fi",
     category: "냉장고",
     price: 74900,
-    benefit: "GL-T422VPZX 공식 LG India 상품",
-    description: "398L 용량의 더블 도어 냉장고입니다.",
+    benefit: "GL-T422VPZX 공식 LG India 제품",
+    description: "398L 용량의 컨버터블 더블도어 냉장고입니다.",
     imageUrl: "https://www.lg.com/content/dam/channel/wcms/in/images/refrigerators/updated/new/GL-T422VPZX-450X450.jpg",
     productUrl: "https://www.lg.com/in/refrigerators/double-door-refrigerators/gl-t422vpzx/",
-    specs: ["398L 용량", "Double Door", "Convertible", "Wi-Fi 지원"],
+    specs: ["398L", "Double Door", "Convertible", "Wi-Fi 지원"],
     icon: Refrigerator,
   },
   {
@@ -108,8 +108,8 @@ const marketProducts = [
     name: "LG 5 Star 1.5 Ton Split AC, Dual Inverter",
     category: "에어컨",
     price: 45900,
-    benefit: "US-Q19BNZE3 공식 LG India 상품",
-    description: "1.5 Ton 5 Star 등급의 Split AC입니다.",
+    benefit: "US-Q19BNZE3 공식 LG India 제품",
+    description: "1.5 Ton 5 Star 등급의 Dual Inverter Split AC입니다.",
     imageUrl: "https://www.lg.com/content/dam/channel/wcms/in/images/split-ac/updatedgallery/us-q19bnze3/new/US-Q19BNZE3-450X450.jpg",
     productUrl: "https://www.lg.com/in/air-conditioners/split-air-conditioners/us-q19bnze3/",
     specs: ["1.5 Ton", "5 Star", "Dual Inverter", "AI Convertible 6-in-1"],
@@ -580,7 +580,7 @@ function DemoLoginScreen({
     <div className="flex min-h-0 flex-1 flex-col px-5 pb-6">
       <header className="mb-5 flex items-center justify-between">
         <button
-          aria-label="홈으로 돌아가기"
+          aria-label="이전 화면으로 돌아가기"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-ink shadow-sm"
           onClick={onBack}
         >
@@ -596,7 +596,7 @@ function DemoLoginScreen({
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <p className="text-xs font-black text-lgred">SwapIt 데모 로그인</p>
         <h1 className="mt-2 text-2xl font-black leading-tight text-ink">
-          신청 데이터를 DB에 저장할 사용자를 확인해주세요
+          신청 데이터를 DB에 저장할 사용자를 확인해 주세요
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-500">
           입력한 이름과 휴대폰 번호가 users 테이블에 저장되고, 이후 교환 신청과 예약 데이터가 이 사용자와 연결됩니다.
@@ -624,7 +624,7 @@ function DemoLoginScreen({
 
         {error ? (
           <p className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
-            로그인이 원활하지 않습니다. 백엔드 서버를 확인해주세요.
+            로그인이 원활하지 않습니다. 백엔드 서버를 확인해 주세요.
           </p>
         ) : null}
 
@@ -665,7 +665,7 @@ function ThinQHomeScreen({
     <div className="flex min-h-0 flex-1 flex-col px-4 pb-5">
       <header className="mb-4 flex items-center justify-between">
         <button
-          aria-label="아이폰 홈으로 돌아가기"
+          aria-label="홈 화면으로 돌아가기"
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-ink shadow-sm"
           onClick={onBackHome}
         >
@@ -679,7 +679,7 @@ function ThinQHomeScreen({
           className="h-9 rounded-full bg-white px-3 text-[11px] font-black text-lgred shadow-sm"
           onClick={onLogout}
         >
-          계정 변경
+          로그아웃
         </button>
       </header>
 
@@ -688,7 +688,7 @@ function ThinQHomeScreen({
           <p className="text-sm font-semibold text-slate-500">안녕하세요</p>
           <h1 className="mt-1 text-2xl font-black leading-tight text-ink">오늘의 집 상태</h1>
           <div className="mt-3 rounded-xl bg-lgred/5 px-3 py-2 text-xs font-bold text-lgred">
-            로그인 사용자: {demoUser.userName} / {demoUser.phoneNumber}
+            로그인 사용자 {demoUser.userName} / {demoUser.phoneNumber}
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <DeviceCard icon={<WashingMachine size={25} />} label="세탁기" status="대기 중" />
@@ -719,7 +719,7 @@ function ThinQHomeScreen({
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-black">SwapIt 가전 교환</span>
               <span className="mt-1 block text-xs leading-5 text-white/70">
-                오래된 가전을 수거하고 크레딧으로 전환
+                중고 가전을 수거하고 보상 크레딧으로 전환합니다.
               </span>
             </span>
             <ChevronRight size={20} />
@@ -779,8 +779,8 @@ function LgMarketScreen({
       <div className="phone-scroll flex-1 overflow-y-auto">
         <section className="rounded-3xl bg-lgred p-5 text-white shadow-sm">
           <p className="text-xs font-black text-white/75">보유 SwapIt 크레딧</p>
-          <h1 className="mt-1 text-3xl font-black">₹{amount.toLocaleString()}</h1>
-          <p className="mt-3 text-sm leading-6 text-white/80">데모 마켓에서 LG 가전 구매 시 크레딧을 적용해볼 수 있어요.</p>
+          <h1 className="mt-1 text-3xl font-black">₩{amount.toLocaleString()}</h1>
+          <p className="mt-3 text-sm leading-6 text-white/80">선택한 LG 가전에 예상 보상 크레딧을 적용한 가격을 확인할 수 있습니다.</p>
         </section>
 
         {selectedProduct ? (
@@ -794,12 +794,12 @@ function LgMarketScreen({
               </div>
             </div>
             <div className="mt-4 rounded-xl bg-cloud p-3">
-              <p className="text-xs font-bold text-slate-500">데모 판매가</p>
-              <p className="text-xl font-black text-ink">₹{selectedProduct.price.toLocaleString()}</p>
-              <p className="mt-1 text-xs font-bold text-lgred">크레딧 적용가 ₹{Math.max(selectedProduct.price - amount, 0).toLocaleString()}</p>
+              <p className="text-xs font-bold text-slate-500">제품 가격</p>
+              <p className="text-xl font-black text-ink">₩{selectedProduct.price.toLocaleString()}</p>
+              <p className="mt-1 text-xs font-bold text-lgred">크레딧 적용가 ₩{Math.max(selectedProduct.price - amount, 0).toLocaleString()}</p>
             </div>
             <button className="mt-4 h-12 w-full rounded-xl bg-lgred text-sm font-black text-white">
-              결제하기
+              구매 진행
             </button>
           </section>
         ) : (
@@ -815,7 +815,7 @@ function LgMarketScreen({
                 <span className="min-w-0 flex-1">
                   <span className="block text-xs font-black text-lgred">{product.category}</span>
                   <span className="block truncate text-sm font-black text-ink">{product.name}</span>
-                  <span className="mt-1 block text-xs text-slate-500">크레딧 적용가 ₹{Math.max(product.price - amount, 0).toLocaleString()}</span>
+                  <span className="mt-1 block text-xs text-slate-500">크레딧 적용가 ₩{Math.max(product.price - amount, 0).toLocaleString()}</span>
                 </span>
                 <span className="rounded-full bg-lgred/10 px-3 py-1 text-xs font-black text-lgred">선택</span>
               </button>
@@ -858,7 +858,7 @@ function SwapItStatusCard({
   return (
     <section className="mt-4">
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-black text-ink">진행 중인 예약</h2>
+        <h2 className="text-sm font-black text-ink">吏꾪뻾 以묒씤 ?덉빟</h2>
         <span className="text-xs font-semibold text-slate-400">Status</span>
       </div>
       <button
@@ -900,37 +900,37 @@ function getHomeStatusCard(status: HomeSwapStatus, reservationLabel: string) {
       return {
         icon: Truck,
         title: "수거가 진행 중이에요",
-        description: "LG 인증 수거 파트너가 방문 준비 중입니다.",
+        description: "배정된 수거 크루가 방문을 준비하고 있습니다.",
       };
     case "reviewPending":
       return {
         icon: ClipboardCheck,
-        title: "최종 검수 중...",
-        description: "수거품을 확인하고 있어요. 완료되면 ThinQ 알림으로 알려드려요.",
+        title: "최종 확인 중",
+        description: "수거물 확인과 허브 인수 절차가 완료되면 ThinQ 알림으로 안내해 드립니다.",
       };
     case "reviewCompleted":
       return {
         icon: Bell,
-        title: "검수가 완료됐어요",
-        description: "최종 감정 결과와 크레딧을 확인해보세요.",
+        title: "확인이 완료됐어요",
+        description: "최종 감정 결과와 보상 정보를 확인해 보세요.",
       };
     case "reReviewPending":
       return {
         icon: Clock,
-        title: "재검수 중...",
-        description: "요청하신 내용을 기준으로 다시 확인하고 있어요.",
+        title: "재검토 중",
+        description: "요청하신 내용을 기준으로 다시 확인하고 있습니다.",
       };
     case "reReviewCompleted":
       return {
         icon: CheckCircle2,
-        title: "재검수가 완료됐어요",
-        description: "재검수 결과와 최종 크레딧을 확인해보세요.",
+        title: "재검토가 완료됐어요",
+        description: "재검토 결과와 최종 보상 정보를 확인해 보세요.",
       };
     default:
       return {
         icon: Recycle,
         title: "SwapIt 신청 가능",
-        description: "오래된 가전을 크레딧으로 바꿔보세요.",
+        description: "오래된 가전을 보상 크레딧으로 바꿔보세요.",
       };
   }
 }
@@ -999,11 +999,7 @@ function SwapItFeatureScreen(props: {
                 props.step === "tracking" ? "invisible w-9 px-0" : ""
               }`}
               disabled={props.isBusy}
-              onClick={
-                props.step === "intro"
-                  ? props.onClose
-                  : props.onReturnHome
-              }
+              onClick={props.step === "intro" ? props.onClose : props.onReturnHome}
             >
               {props.step === "intro" ? "닫기" : <Home size={16} />}
             </button>
@@ -1025,7 +1021,7 @@ function SwapItFeatureScreen(props: {
       >
         {props.error ? (
           <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            ??????⑤벡瑜????????붺몭??????? ?????????????곸죩. ???????됯퇇逾??????????댄뱼?????轅붽틓????????欲꼲????饔낅떽??????
+            일시적인 오류가 발생했습니다. 잠시 후 다시 시도하거나 새로고침해 주세요.
           </div>
         ) : null}
         {props.step === "intro" ? (
@@ -1119,7 +1115,7 @@ function StepProgress({ step }: { step: SwapStep }) {
     { id: 2, label: "감정" },
     { id: 3, label: "예약" },
     { id: 4, label: "이동" },
-    { id: 5, label: "크레딧" },
+    { id: 5, label: "보상" },
   ];
 
   return (
@@ -1215,10 +1211,10 @@ function OngoingReservationHeader({ step }: { step: "ongoing" | "tracking" | "cr
     step === "ongoing" ? "진행 중인 예약" : step === "tracking" ? "진행 중인 예약 · 수거 진행" : "진행 중인 예약 · 보상 단계";
   const description =
     step === "ongoing"
-      ? "예약 정보 확인, STEP 4 크루 이동 확인, STEP 5 크레딧 보상 확인으로 이어지는 전용 화면입니다."
+      ? "예약 정보 확인, STEP 4 크루 이동 확인, STEP 5 전체 보상 확인으로 이어지는 전용 화면입니다."
       : step === "tracking"
-      ? "크루 이동, 수거 진행, GPS 추적을 한 화면에서 확인합니다."
-      : "수거 완료 이후 검수, 최종 보상가, 크레딧 발급 단계를 이어서 확인합니다.";
+        ? "크루 이동, 수거 진행, GPS 추적을 한 화면에서 확인합니다."
+        : "수거 완료 이후 검수, 최종 보상가, 크레딧 발급 단계를 이어서 확인합니다.";
 
   return (
     <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
@@ -1275,24 +1271,32 @@ function SwapItIntro({
   onApplianceChange: (appliance: ApplianceId) => void;
   onStart: () => void;
 }) {
+  const applianceLabels: Record<ApplianceId, string> = {
+    washing_machine: "세탁기",
+    refrigerator: "냉장고",
+    air_conditioner: "에어컨",
+    microwave: "전자레인지",
+    tv: "TV",
+  };
+
   return (
     <section className="relative min-h-full overflow-hidden bg-transparent px-6 pb-6 pt-0 text-white">
       <div className="relative z-10 pt-3">
         <p className="text-xs font-black text-white/80">LG ThinQ</p>
         <h1 className="mt-5 text-5xl font-black leading-[1.02]">SwapIt</h1>
         <p className="mt-4 max-w-[285px] text-sm font-semibold leading-6 text-white/85">
-          ???????????????ル뒌???????獄쏅챶留?????????????????????롮쾸?椰???⑤챶猷?????嚥▲굧???? ????????????饔낅떽???????????????筌뤾쑬?????????ш내?℡ㅇ????轅붽틓??影?놁쟼???
+          교환할 가전을 선택하고 사진을 등록하면 AI가 제품 상태를 분석해 예상 보상가를 계산합니다.
+          이후 LG 가전 구매와 수거 예약까지 한 번에 이어서 진행할 수 있습니다.
         </p>
       </div>
 
-      <p className="relative z-10 mb-3 mt-10 text-sm font-black text-white">
-        ????????????ル뒌????????壤굿??Β??
-      </p>
+      <p className="relative z-10 mb-3 mt-10 text-sm font-black text-white">교환할 가전을 선택해 주세요</p>
       <div className="relative z-10 rounded-[28px] bg-white/95 p-4 text-ink shadow-xl shadow-black/10 backdrop-blur-sm">
         <div className="grid grid-cols-2 gap-3">
           {applianceOptions.map((option) => {
             const Icon = option.icon;
             const active = selectedAppliance === option.id;
+
             return (
               <button
                 key={option.id}
@@ -1304,7 +1308,7 @@ function SwapItIntro({
                 onClick={() => onApplianceChange(option.id)}
               >
                 <Icon size={24} />
-                <span className="mt-3 block text-sm font-black">{option.label}</span>
+                <span className="mt-3 block text-sm font-black">{applianceLabels[option.id]}</span>
               </button>
             );
           })}
@@ -1313,7 +1317,7 @@ function SwapItIntro({
           className="mt-4 h-12 w-full rounded-xl bg-lgred text-sm font-black text-white"
           onClick={onStart}
         >
-          ?????????롮쾸?椰???⑤챶猷??????????????
+          사진 등록하러 가기
         </button>
       </div>
     </section>
@@ -1321,9 +1325,7 @@ function SwapItIntro({
 }
 
 function IndianPatternOverlay({ className = "" }: { className?: string }) {
-  return (
-    <div aria-hidden="true" className={`pointer-events-none absolute inset-0 ${className}`} />
-  );
+  return <div aria-hidden="true" className={`pointer-events-none absolute inset-0 ${className}`} />;
 }
 
 function DeviceCard({

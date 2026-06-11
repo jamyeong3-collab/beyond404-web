@@ -2,7 +2,7 @@
 
 import type { SwapRequest } from "@/types/swap";
 import { CalendarCheck, Crosshair, Loader2, MapPin, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type BookingPanelProps = {
   swapRequest: SwapRequest | null;
@@ -37,14 +37,14 @@ export type BookingSelection = {
 
 const defaultPickupCoords = { lat: 37.5665, lng: 126.978 };
 const defaultAddress = "서울특별시 중구 세종대로 110";
-const reservedTimeSlots = ["11:30", "14:00", "16:30"];
+const reservedTimeSlots = new Set(["11:30", "14:00", "16:30"]);
 
 const timeSlots = Array.from({ length: 19 }, (_, index) => {
   const totalMinutes = 9 * 60 + index * 30;
   const hour = Math.floor(totalMinutes / 60);
   const minute = totalMinutes % 60;
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-}).filter((slot) => !reservedTimeSlots.includes(slot));
+});
 
 function todayString() {
   const today = new Date();
@@ -56,7 +56,7 @@ function todayString() {
 
 function formatDateLabel(value: string) {
   if (!value) {
-    return "날짜를 선택해 주세요";
+    return "날짜를 선택해 주세요.";
   }
 
   const date = new Date(`${value}T00:00:00`);
@@ -127,7 +127,7 @@ async function geocodeAddress(query: string) {
 
 export function BookingPanel({ swapRequest, loading, onBooking }: BookingPanelProps) {
   const [mode, setMode] = useState<BookingMode>("schedule");
-  const canBook = Boolean(swapRequest && swapRequest.preValuation.minEstimatedValue > 0);
+  const canBook = Boolean(swapRequest && swapRequest.preValuation.maxEstimatedValue > 0);
 
   return (
     <section className="rounded-[28px] bg-white p-5 shadow-sm">
@@ -136,8 +136,8 @@ export function BookingPanel({ swapRequest, loading, onBooking }: BookingPanelPr
         STEP 3. 수거 예약
       </div>
       <p className="mt-1 text-xs leading-5 text-slate-500">
-        시간 예약은 날짜와 시간을 직접 선택하고, 바로콜은 현재 위치 또는 직접 입력한 주소를 기준으로 가장 가까운
-        수거 크루를 찾습니다.
+        시간 예약은 날짜와 시간을 직접 선택하고, 바로콜은 현재 위치 또는 직접 입력한 주소를 기준으로
+        가장 가까운 수거 크루를 찾습니다.
       </p>
 
       <div className="mt-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
@@ -187,8 +187,12 @@ function ScheduleBooking({
   loading: boolean;
   onBooking: (booking: BookingSelection) => void;
 }) {
+  const firstAvailableTime = useMemo(
+    () => timeSlots.find((time) => !reservedTimeSlots.has(time)) ?? "09:00",
+    [],
+  );
   const [selectedDate, setSelectedDate] = useState(todayString());
-  const [selectedTime, setSelectedTime] = useState(timeSlots[0] ?? "09:00");
+  const [selectedTime, setSelectedTime] = useState(firstAvailableTime);
   const [pickupAddress, setPickupAddress] = useState(defaultAddress);
   const [detailAddress, setDetailAddress] = useState("");
   const [pickupCoords, setPickupCoords] = useState<PickupCoordinates>(defaultPickupCoords);
@@ -216,17 +220,24 @@ function ScheduleBooking({
       <div className="mt-4 rounded-3xl bg-slate-50 p-4">
         <p className="text-sm font-black text-ink">예약 시간 선택</p>
         <p className="mt-1 text-xs font-semibold text-slate-400">
-          09:00부터 18:00까지, 30분 단위로 예약 가능한 시간만 표시됩니다.
+          09:00부터 18:00까지, 30분 단위로 예약 가능 시간만 표시됩니다.
         </p>
         <div className="mt-3 grid grid-cols-3 gap-2">
           {timeSlots.map((time) => {
             const active = time === selectedTime;
+            const disabled = reservedTimeSlots.has(time);
+
             return (
               <button
                 key={time}
-                className={`h-11 rounded-xl border text-sm font-black ${
-                  active ? "border-lgred bg-lgred text-white" : "border-slate-200 bg-white text-ink"
+                className={`h-11 rounded-xl border text-sm font-black transition ${
+                  disabled
+                    ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-300"
+                    : active
+                      ? "border-lgred bg-lgred text-white"
+                      : "border-slate-200 bg-white text-ink"
                 }`}
+                disabled={disabled}
                 onClick={() => setSelectedTime(time)}
                 type="button"
               >
@@ -247,7 +258,7 @@ function ScheduleBooking({
 
       <button
         className="mt-4 h-12 w-full rounded-2xl bg-[#202632] text-sm font-black text-white disabled:bg-slate-300"
-        disabled={!canBook || loading || !selectedDate}
+        disabled={!canBook || loading || !selectedDate || reservedTimeSlots.has(selectedTime)}
         onClick={() =>
           onBooking({
             mode: "schedule",
@@ -292,7 +303,7 @@ function InstantCallBooking({
   const refreshCurrentLocation = async () => {
     if (!isSecureGpsAvailable()) {
       setLocationError(
-        "현재 접속 주소에서는 브라우저가 GPS를 차단할 수 있습니다. localhost 또는 HTTPS에서 다시 열거나 직접 입력으로 진행해 주세요.",
+        "현재 접속 주소에서는 브라우저가 GPS를 차단하고 있습니다. localhost 또는 HTTPS에서 다시 열거나 직접 입력으로 진행해 주세요.",
       );
       return;
     }
@@ -379,12 +390,14 @@ function InstantCallBooking({
   return (
     <div>
       <div className="overflow-hidden rounded-3xl bg-slate-50">
-        <PickupPreviewMap addressLabel={locating ? "현재 위치 확인 중" : mapLabel} coordinates={activeCoords} />
+        <PickupPreviewMap
+          addressLabel={locating ? "현재 위치 확인 중..." : mapLabel}
+          coordinates={activeCoords}
+        />
       </div>
 
       <p className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold leading-5 text-slate-500">
-        바로콜 지도는 구글 지도 프리뷰로 표시됩니다. 기존 JS 지도 로더가 환경에 따라 막히는 문제가 있어, 현재는
-        더 안정적인 구글 embed 방식으로 연결해 두었습니다.
+        지도는 현재 선택한 위치를 기준으로 표시됩니다.
       </p>
 
       <div className="mt-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
@@ -399,7 +412,7 @@ function InstantCallBooking({
               <Crosshair size={18} />
             </span>
             <div>
-              <p className="text-xs font-black text-slate-400">현재 위치 확인</p>
+              <p className="text-xs font-black text-slate-400">내 위치 확인</p>
               <p className="mt-1 text-lg font-black text-ink">{pickupAddress}</p>
               <p className="mt-1 text-xs font-semibold text-slate-500">필요하면 상세 위치를 추가해 주세요.</p>
             </div>
@@ -579,7 +592,7 @@ function ManualAddressEditor({
 
       <input
         className="h-11 w-full rounded-2xl border border-lgred/20 bg-white px-4 text-sm font-semibold text-ink outline-none focus:border-lgred"
-        placeholder="주소를 검색하거나 직접 입력해 주세요"
+        placeholder="서울특별시 중구 세종대로 110"
         value={inputValue}
         onChange={(event) => {
           setInputValue(event.target.value);
