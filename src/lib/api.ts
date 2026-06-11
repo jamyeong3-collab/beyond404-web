@@ -73,10 +73,41 @@ export function createSwapRequestForUser(
   });
 }
 
-export function analyzePhoto(id: number, fileName: string, applianceType = "washing_machine") {
+export type AnalyzePhotoPayload = {
+  fileName: string;
+  imageUrl?: string;
+  applianceType?: string;
+};
+
+export type UpdateAppliancePayload = {
+  applianceType?: string;
+  brand?: string;
+  modelName?: string;
+  estimatedAge?: string;
+  exteriorCondition?: string;
+};
+
+export function analyzePhoto(id: number, payload: AnalyzePhotoPayload) {
   return request<SwapRequest>(`/api/swap-requests/${id}/photos`, {
     method: "POST",
-    body: JSON.stringify({ fileName, applianceType }),
+    body: JSON.stringify({
+      fileName: payload.fileName,
+      imageUrl: payload.imageUrl,
+      applianceType: payload.applianceType ?? "washing_machine",
+    }),
+  });
+}
+
+export function updateAppliance(id: number, payload: UpdateAppliancePayload) {
+  return request<SwapRequest>(`/api/swap-requests/${id}/appliance`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      applianceType: payload.applianceType,
+      brand: payload.brand,
+      modelName: payload.modelName,
+      estimatedAge: payload.estimatedAge,
+      exteriorCondition: payload.exteriorCondition,
+    }),
   });
 }
 

@@ -14,13 +14,24 @@ import { useEffect, useMemo, useRef, useState } from "react";
 type ApplianceId = "washing_machine" | "refrigerator" | "air_conditioner" | "microwave" | "tv";
 type CapturePhase = "camera" | "recognizing" | "review";
 
+export type CaptureSubmission = {
+  exteriorPhotoFileName: string;
+  labelPhotoFileName: string;
+  agreedToCreditPolicy: boolean;
+  applianceType: ApplianceId;
+  brand: string;
+  modelName: string;
+  estimatedAge: string;
+  exteriorCondition: string;
+};
+
 type CapturePanelProps = {
   fileName: string;
   loading: boolean;
   applianceId: ApplianceId;
   applianceLabel: string;
   onFileChange: (fileName: string) => void;
-  onAnalyze: () => void;
+  onAnalyze: (submission: CaptureSubmission) => void;
   onCancel: () => void;
 };
 
@@ -323,7 +334,18 @@ export function CapturePanel({
         previewUrl={previewUrl}
         recognizedInfo={recognizedInfo}
         onChange={setRecognizedInfo}
-        onAnalyze={onAnalyze}
+        onAnalyze={() =>
+          onAnalyze({
+            exteriorPhotoFileName: fileName,
+            labelPhotoFileName: fileName ? `label-${fileName}` : "label-demo-capture.jpg",
+            agreedToCreditPolicy: true,
+            applianceType: applianceId,
+            brand: recognizedInfo.brand,
+            modelName: recognizedInfo.modelName,
+            estimatedAge: recognizedInfo.estimatedAge,
+            exteriorCondition: recognizedInfo.conditionGrade,
+          })
+        }
         onRetake={handleRetake}
       />
     );

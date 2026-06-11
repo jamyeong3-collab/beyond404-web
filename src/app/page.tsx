@@ -29,6 +29,7 @@ import type { BookingSelection } from "@/features/booking/BookingPanel";
 import { OngoingReservationPanel } from "@/features/booking/OngoingReservationPanel";
 import { ReservationCompletePanel } from "@/features/booking/ReservationCompletePanel";
 import { CapturePanel } from "@/features/capture/CapturePanel";
+import type { CaptureSubmission } from "@/features/capture/CapturePanel";
 import { CreditPanel } from "@/features/credit/CreditPanel";
 import { AnalyzingPanel } from "@/features/inspection/AnalyzingPanel";
 import { PreValuationPanel } from "@/features/pre-valuation/PreValuationPanel";
@@ -40,6 +41,7 @@ import {
   createSwapRequestForUser,
   demoLogin,
   requestInstantCall,
+  updateAppliance,
   type DemoUser,
 } from "@/lib/api";
 import type { SwapRequest } from "@/types/swap";
@@ -177,10 +179,22 @@ export default function HomePage() {
   });
 
   const analyzeMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (submission: CaptureSubmission) => {
       if (!demoUser) throw new Error("Demo login is required");
+
       const current = swapRequest ?? (await createSwapRequestForUser(demoUser, selectedAppliance));
-      return analyzePhoto(current.id, fileName, selectedAppliance);
+      const analyzed = await analyzePhoto(current.id, {
+        fileName: submission.exteriorPhotoFileName,
+        applianceType: submission.applianceType,
+      });
+
+      return updateAppliance(analyzed.id, {
+        applianceType: submission.applianceType,
+        brand: submission.brand,
+        modelName: submission.modelName,
+        estimatedAge: submission.estimatedAge,
+        exteriorCondition: submission.exteriorCondition,
+      });
     },
     onSuccess: (data) => {
       setSwapRequest(data);
@@ -364,9 +378,10 @@ export default function HomePage() {
                   onApplianceChange={setSelectedAppliance}
                   onStart={() => setSwapStep("capture")}
                   onFileChange={setFileName}
-                  onAnalyze={() => {
+                  onAnalyze={(submission) => {
+                    setFileName(submission.exteriorPhotoFileName);
                     setSwapStep("analyzing");
-                    analyzeMutation.mutate();
+                    analyzeMutation.mutate(submission);
                   }}
                   onValuationNext={() => setSwapStep("booking")}
                   onBooking={(booking) => bookingMutation.mutate(booking)}
@@ -914,7 +929,7 @@ function SwapItFeatureScreen(props: {
   onApplianceChange: (appliance: ApplianceId) => void;
   onStart: () => void;
   onFileChange: (fileName: string) => void;
-  onAnalyze: () => void;
+  onAnalyze: (submission: CaptureSubmission) => void;
   onValuationNext: () => void;
   onBooking: (booking: BookingSelection) => void;
   onComplete: () => void;
