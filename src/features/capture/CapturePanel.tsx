@@ -40,9 +40,12 @@ type RecognizedAppliance = {
   applianceType: string;
   brand: string;
   modelName: string;
+  capacity: string;
+  size: string; // 소형 | 중형 | 대형
   estimatedAge: string;
   exteriorCondition: string;
   confidence: number;
+  weightKg: number | null; // API 또는 DB에서 얻은 실제 무게
 };
 
 const targetDescriptions: Record<
@@ -114,6 +117,7 @@ export function CapturePanel({
   onCancel,
 }: CapturePanelProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const frameRef = useRef<HTMLDivElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [phase, setPhase] = useState<CapturePhase>("consent");
   const [target, setTarget] = useState<CaptureTarget>("exterior");
@@ -138,8 +142,32 @@ export function CapturePanel({
     setRecognizedInfo(recognitionByAppliance[applianceId]);
   }, [applianceId]);
 
+  // 전면 VLM 분석: phase 전환은 고정 타이머로 보장, API는 백그라운드에서 실행
   useEffect(() => {
-    if (loading || phase !== "camera") {
+    if (phase !== "recognizing") return;
+
+    if (!capturedImageData) {
+      const timer = window.setTimeout(() => setPhase("review"), 900);
+      return () => window.clearTimeout(timer);
+    }
+
+    let live = true;
+
+    // phase 전환은 API와 무관하게 2.5초 후 반드시 실행
+    const transitionTimer = window.setTimeout(() => {
+      if (live) setPhase("sticker-camera");
+    }, 2500);
+
+    // API는 백그라운드에서 실행 — 완료되면 데이터 업데이트
+    callAnalyzeApi(capturedImageData)
+      .then((result) => { if (live) setRecognizedInfo(result); })
+      .catch(() => {});
+
+    return () => { live = false; window.clearTimeout(transitionTimer); };
+  }, [phase, capturedImageData, applianceId]);
+
+  useEffect(() => {
+    if (loading || (phase !== "camera" && phase !== "sticker-camera")) {
       stopCamera();
       return undefined;
     }
@@ -147,6 +175,77 @@ export function CapturePanel({
     void startCamera();
     return () => stopCamera();
   }, [loading, phase, target]);
+
+  useEffect(() => {
+    if (phase !== "sticker-recognizing") return;
+    if (!stickerImageData) { setPhase("review"); return; }
+
+    // effect 시작 시점의 인식 정보 스냅샷 (stale closure 방지)
+    const prevModelName = recognizedInfo.modelName;
+    const prevBrand = recognizedInfo.brand;
+    const prevEstimatedAge = recognizedInfo.estimatedAge;
+
+    let cancelled = false;
+
+    const fallbackTimer = window.setTimeout(() => {
+      if (cancelled) return;
+      cancelled = true;
+      setPhase("review");
+    }, 30000);
+
+    (async () => {
+      try {
+        // 1단계: 스티커 OCR → 브랜드 + 모델명 텍스트 추출
+        const labelResult = await callLabelApi(stickerImageData);
+        if (cancelled) return;
+
+        const mergedModelName = labelResult.modelName || prevModelName || "";
+        const mergedBrand = labelResult.brand || prevBrand || "";
+
+        if (mergedModelName) {
+          // 2단계: 모델명으로 스펙 조회
+          try {
+            const specs = await callLookupSpecsApi(mergedModelName);
+            if (cancelled) return;
+
+            setRecognizedInfo((prev) => ({
+              ...prev,
+              brand: mergedBrand || specs.brand || prev.brand,
+              modelName: mergedModelName,
+              capacity: specs.capacity || prev.capacity,
+              size: specs.size || prev.size,
+              estimatedAge: specs.releaseYear
+                ? releaseYearToAge(specs.releaseYear)
+                : prevEstimatedAge,
+              // API가 무게를 알고 있으면 저장 (스크랩 계산 정확도 향상)
+              weightKg: specs.weight_kg ?? prev.weightKg,
+            }));
+          } catch {
+            // 스펙 조회 실패 → OCR 결과만 반영
+            setRecognizedInfo((prev) => ({
+              ...prev,
+              brand: mergedBrand || prev.brand,
+              modelName: mergedModelName,
+            }));
+          }
+        } else {
+          // 모델명 없음 → 브랜드만 보완
+          setRecognizedInfo((prev) => ({
+            ...prev,
+            brand: mergedBrand || prev.brand,
+          }));
+        }
+      } catch {
+        // OCR 완전 실패 → 기존 정보 유지
+      } finally {
+        window.clearTimeout(fallbackTimer);
+        if (!cancelled) setPhase("review");
+      }
+    })();
+
+    return () => { cancelled = true; window.clearTimeout(fallbackTimer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, stickerImageData]);
 
   useEffect(() => {
     return () => {
@@ -224,10 +323,7 @@ export function CapturePanel({
     }
 
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
     const context = canvas.getContext("2d");
-
     if (!context) {
       setCameraMessage("촬영 이미지를 생성하지 못했습니다.");
       return;
@@ -325,6 +421,92 @@ export function CapturePanel({
           })
         }
       />
+    );
+  }
+
+  if (phase === "sticker-camera") {
+    return (
+      <section className="relative h-full overflow-hidden bg-[#111318] text-white">
+        <div className="absolute inset-0">
+          <video
+            ref={videoRef}
+            className={`h-full w-full object-cover [backdrop-filter:none] [filter:none] ${cameraReady ? "opacity-100" : "opacity-0"}`}
+            muted
+            playsInline
+            style={{ filter: "none", backdropFilter: "none" }}
+          />
+          {!cameraReady && <DemoCameraFallback />}
+          <div className="pointer-events-none absolute inset-0 bg-black/15" />
+        </div>
+
+        <div className="relative z-20 flex items-center justify-between px-6 pt-5">
+          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-black text-white/85">
+            2 / 2
+          </span>
+          <button
+            className="text-sm font-semibold text-white/70"
+            onClick={() => setPhase("review")}
+            type="button"
+          >
+            건너뛰기
+          </button>
+        </div>
+
+        <div className="relative z-10 flex h-[calc(100%-150px)] flex-col items-center justify-center gap-4 px-6">
+          <p className="text-center text-base font-black text-white">모델 라벨 스티커를 찍어주세요</p>
+          <p className="rounded-full bg-black/55 px-4 py-2 text-[11px] font-black text-white/90">
+            글씨가 잘 보이도록 가까이 대주세요
+          </p>
+          <div className="h-[150px] w-[310px] rounded-2xl border-2 border-dashed border-white/65" />
+          <p className="text-center text-[11px] font-semibold leading-5 text-white/55">
+            후면·측면·제품 내부 어디든 라벨이 있는 곳을 찍어주세요
+          </p>
+        </div>
+
+        {cameraMessage ? (
+          <div className="absolute left-6 right-6 top-[92px] z-30 rounded-2xl bg-black/55 px-4 py-3 text-center text-xs font-bold leading-5 text-white/85">
+            {cameraMessage}
+          </div>
+        ) : null}
+
+        <div className="absolute bottom-6 left-0 right-0 z-20 flex items-center justify-center gap-9">
+          <button
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-black/35 text-white"
+            onClick={startCamera}
+            type="button"
+          >
+            <RotateCcw size={21} />
+          </button>
+          <button
+            className="flex h-[74px] w-[74px] items-center justify-center rounded-full border-4 border-white bg-white/15 p-1 shadow-xl shadow-black/35"
+            onClick={handleStickerCapture}
+            type="button"
+          >
+            <span className="flex h-full w-full items-center justify-center rounded-full bg-white text-lgred">
+              <Camera size={31} />
+            </span>
+          </button>
+          <div className="h-11 w-11" />
+        </div>
+      </section>
+    );
+  }
+
+  if (phase === "sticker-recognizing") {
+    return (
+      <section className="flex min-h-full flex-col items-center justify-center overflow-hidden bg-[#111318] text-white gap-6 px-8">
+        <div className="relative flex h-28 w-28 items-center justify-center">
+          <span className="absolute h-14 w-14 rounded-full bg-lgred/35 animate-scanPulse" />
+          <span className="absolute h-14 w-14 rounded-full bg-lgred/35 animate-scanPulse [animation-delay:0.67s]" />
+          <span className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full bg-lgred">
+            <ScanLine size={24} />
+          </span>
+        </div>
+        <div className="text-center">
+          <p className="text-xl font-black">라벨 분석 중</p>
+          <p className="mt-2 text-sm font-semibold text-white/60">모델명과 스펙 정보를 읽어오고 있어요</p>
+        </div>
+      </section>
     );
   }
 
@@ -586,10 +768,39 @@ function ReviewView({
   onRetake: () => void;
   onAnalyze: () => void;
 }) {
+  const [showModal, setShowModal] = useState(false);
+  const credit = calculateFinalCredit(
+    recognizedInfo.applianceType,
+    recognizedInfo.size,
+    DUMMY_NEW_PRODUCT.price,
+    DUMMY_SWAP_COUNT,
+    recognizedInfo.modelName || undefined,
+    recognizedInfo.weightKg,
+  );
   const ready = Boolean(exteriorPhotoFileName && labelPhotoFileName);
 
   return (
     <section className="phone-scroll flex h-full min-h-0 flex-col overflow-y-auto bg-white p-5 pb-0 shadow-sm">
+      {showModal && previewUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+          onClick={() => setShowModal(false)}
+        >
+          <button
+            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white"
+            onClick={() => setShowModal(false)}
+            type="button"
+          >
+            <X size={20} />
+          </button>
+          <img
+            src={previewUrl}
+            alt="촬영한 가전 원본"
+            className="max-h-screen max-w-full object-contain p-4"
+          />
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs font-black text-lgred">STEP 1-3</p>
@@ -600,9 +811,28 @@ function ReviewView({
         </span>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <PhotoCard title="외관 사진" fileName={exteriorPhotoFileName} previewUrl={exteriorPreviewUrl} />
-        <PhotoCard title="뒷 라벨" fileName={labelPhotoFileName} previewUrl={labelPreviewUrl} />
+      <div className="mt-4 flex items-center justify-between">
+        <p className="text-sm font-black text-ink">방금 촬영한 사진</p>
+        <span className="text-[11px] font-bold text-slate-400">탭하면 전체보기</span>
+      </div>
+
+      <div
+        className="mt-2 w-full cursor-pointer overflow-hidden rounded-3xl bg-[#111318] shadow-sm"
+        style={{ minHeight: 180 }}
+        onClick={() => previewUrl && setShowModal(true)}
+      >
+        {previewUrl ? (
+          <img
+            src={previewUrl}
+            alt="촬영한 가전"
+            style={{ display: "block", width: "100%", height: "auto" }}
+          />
+        ) : (
+          <div className="flex h-56 flex-col items-center justify-center text-white/70">
+            <Camera size={34} />
+            <p className="mt-3 max-w-[230px] truncate text-xs font-bold">{fileName}</p>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 rounded-3xl bg-lgred/5 p-4">
@@ -613,7 +843,7 @@ function ReviewView({
           <div>
             <p className="text-sm font-black text-ink">정보 확인 후 감정 진행</p>
             <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-              가전 종류, 브랜드, 모델명, 예상 연식, 외관 상태를 수정할 수 있으며, 이 값이 보상 크레딧 예측에 반영됩니다.
+              AI가 분석한 결과예요. 틀린 내용은 직접 수정할 수 있어요.
             </p>
           </div>
         </div>
@@ -639,6 +869,49 @@ function ReviewView({
           />
         </div>
       </div>
+
+      {credit !== null && (
+        <div className="mt-4 overflow-hidden rounded-3xl bg-lgred">
+          {/* 최종 크레딧 */}
+          <div className="flex items-center justify-between px-5 py-4">
+            <div>
+              <p className="text-[11px] font-black text-white/65">예상 최종 크레딧</p>
+              <p className="mt-0.5 text-3xl font-black text-white">
+                {credit.total.toLocaleString("ko-KR")}
+                <span className="ml-1 text-lg font-black text-white/80">원</span>
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold text-white/60">{recognizedInfo.size} {recognizedInfo.applianceType}</p>
+              <p className="mt-1 text-[10px] font-semibold text-white/45">{DUMMY_SWAP_COUNT}회 이용 · {credit.tier} 신제품</p>
+            </div>
+          </div>
+          {/* 계산 내역 */}
+          <div className="space-y-1.5 bg-black/15 px-5 py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-white/60">스크랩 가치</span>
+              <span className="text-[11px] font-black text-white/80">+{credit.scrap.toLocaleString("ko-KR")}원</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-white/60">
+                신제품 연계 ({(credit.ratio * 100).toFixed(0)}%)
+              </span>
+              <span className="text-[11px] font-black text-white/80">+{credit.bonus.toLocaleString("ko-KR")}원</span>
+            </div>
+            <div className="mt-1 border-t border-white/15 pt-1.5 flex items-center justify-between">
+              <span className="text-[10px] font-semibold text-white/40">
+                신제품가 {DUMMY_NEW_PRODUCT.price.toLocaleString("ko-KR")}원 기준 (더미)
+              </span>
+              <span className="text-[10px] font-semibold text-white/40">상한 {(CAP_RATIO * 100).toFixed(0)}%</span>
+            </div>
+            <div className="mt-1 flex items-center gap-1">
+              <span className={`text-[10px] font-black ${credit.weightFromDB ? "text-green-300" : "text-white/35"}`}>
+                {credit.weightFromDB ? "✓ 모델 무게 적용" : "크기 등급 평균값 적용"}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="sticky bottom-0 -mx-5 mt-5 grid grid-cols-2 gap-2 bg-white/95 px-5 pb-5 pt-3 shadow-[0_-14px_28px_rgba(255,255,255,.92)]">
         <button
