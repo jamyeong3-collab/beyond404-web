@@ -36,17 +36,6 @@ type CapturePanelProps = {
   onCancel: () => void;
 };
 
-export type CaptureSubmission = {
-  exteriorPhotoFileName: string;
-  labelPhotoFileName: string;
-  agreedToCreditPolicy: boolean;
-  applianceType: string;
-  brand: string;
-  modelName: string;
-  estimatedAge: string;
-  exteriorCondition: string;
-};
-
 type RecognizedAppliance = {
   applianceType: string;
   brand: string;

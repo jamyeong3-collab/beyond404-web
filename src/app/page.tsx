@@ -1061,7 +1061,6 @@ function SwapItFeatureScreen(props: {
             selectedProductId={props.selectedPurchaseProductId}
             onSelectProduct={(productId) => props.onSelectPurchaseProduct(productId)}
             onContinueToBooking={props.onValuationNext}
-            onSkip={props.onValuationNext}
           />
         ) : null}
         {props.step === "booking" ? (
