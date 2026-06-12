@@ -1,9 +1,8 @@
 "use client";
 
-import { GoogleMap, MarkerF, PolylineF, useJsApiLoader } from "@/components/maps/google-maps-compat";
 import { getTracking } from "@/lib/api";
 import type { SwapRequest } from "@/types/swap";
-import { MapPin, Navigation, Phone, ShieldCheck, Star, Truck } from "lucide-react";
+import { MapPin, Navigation, Phone, ShieldCheck, Star, Truck, Warehouse } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 type TrackingPanelProps = {
@@ -19,12 +18,19 @@ type PickupTrackingStatus =
   | "en_route_hub"
   | "delivered_to_hub";
 
+type Coordinates = {
+  lat: number;
+  lng: number;
+};
+
 type TrackingViewModel = {
   status: PickupTrackingStatus;
   title: string;
   subtitle: string;
-  pickupLocation: { lat: number; lng: number };
-  crewLocation: { lat: number; lng: number } | null;
+  pickupLocation: Coordinates;
+  pickupAddress: string;
+  crewLocation: Coordinates | null;
+  crewUpdatedAt: string | null;
   processingCenter: { label: string; lat: number; lng: number } | null;
   etaLabel: string;
   crewProfile: {
@@ -35,7 +41,6 @@ type TrackingViewModel = {
     phone: string;
   } | null;
   locationMessage: string;
-  nearbyCrews: SwapRequest["tracking"]["nearbyCrews"];
   events: NonNullable<SwapRequest["tracking"]["events"]>;
 };
 
@@ -47,6 +52,32 @@ const progressSteps = [
   { key: "HUB_DONE", label: "e-waste 공장 전달 완료" },
 ] as const;
 
+function formatPhoneTime(date = new Date()) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(parsed);
+}
+
+function formatCoordinates(location: Coordinates | null) {
+  if (!location) return "-";
+  return `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`;
+}
+
 function minutesUntil(value?: string | null) {
   if (!value) return 0;
   const target = new Date(value);
@@ -55,7 +86,7 @@ function minutesUntil(value?: string | null) {
 }
 
 function deriveStatus(request: SwapRequest): PickupTrackingStatus {
-  if (request.tracking.phase === "DELIVERED_TO_EWASTE_HUB" || request.status === "REWARD_READY") {
+  if (request.tracking.phase === "DELIVERED_TO_EWASTE_HUB" || request.pickupRequest?.status === "COMPLETED") {
     return "delivered_to_hub";
   }
   if (request.tracking.phase === "EN_ROUTE_TO_PROCESSING_CENTER") {
@@ -76,13 +107,13 @@ function deriveStatus(request: SwapRequest): PickupTrackingStatus {
 function titleFor(status: PickupTrackingStatus) {
   switch (status) {
     case "crew_assigned":
-      return "크루가 배정되었어요";
+      return "수거 크루가 배정되었어요";
     case "en_route_pickup":
       return "크루가 수거지로 이동 중이에요";
     case "arrived":
-      return "문앞에서 수거를 진행 중이에요";
+      return "크루가 문앞에 도착했어요";
     case "en_route_hub":
-      return "e-waste 공장으로 이동 중이에요";
+      return "수거 후 e-waste 공장으로 이동 중이에요";
     case "delivered_to_hub":
       return "e-waste 공장 전달이 완료되었어요";
     default:
@@ -93,18 +124,61 @@ function titleFor(status: PickupTrackingStatus) {
 function subtitleFor(status: PickupTrackingStatus) {
   switch (status) {
     case "crew_assigned":
-      return "배정된 크루의 프로필과 위치를 확인할 수 있어요.";
+      return "배정된 크루의 현재 위치와 이동 상태를 바로 확인할 수 있어요.";
     case "en_route_pickup":
-      return "실시간 위치 갱신으로 크루 이동을 추적하고 있어요.";
+      return "실시간 위치가 들어오면 지도에서 크루 이동 경로를 따라갈 수 있어요.";
     case "arrived":
-      return "현장 확인과 수거가 진행 중입니다.";
+      return "문앞 도착 이후 현장 확인과 수거가 진행됩니다.";
     case "en_route_hub":
-      return "수거 후 처리 허브로 이동하고 있습니다.";
+      return "수거 완료 후 처리 허브까지의 이동이 계속 업데이트됩니다.";
     case "delivered_to_hub":
-      return "안심 처리 완료 상태를 확인할 수 있어요.";
+      return "안심 처리 완료 상태입니다. 다음 단계로 넘어갈 수 있어요.";
     default:
-      return "매칭 점수가 높은 크루에게 우선 알림을 보내고 있습니다.";
+      return "매칭 점수가 높은 크루에게 우선적으로 배차 알림을 보내고 있어요.";
   }
+}
+
+function progressIndex(status: PickupTrackingStatus) {
+  switch (status) {
+    case "crew_assigned":
+      return 1;
+    case "en_route_pickup":
+      return 2;
+    case "arrived":
+    case "en_route_hub":
+      return 3;
+    case "delivered_to_hub":
+      return 4;
+    default:
+      return 0;
+  }
+}
+
+function buildGoogleMapEmbedUrl({
+  center,
+  routeFrom,
+  routeTo,
+}: {
+  center: Coordinates;
+  routeFrom?: Coordinates | null;
+  routeTo?: Coordinates | null;
+}) {
+  const params = new URLSearchParams();
+
+  if (routeFrom && routeTo) {
+    params.set("f", "d");
+    params.set("source", "s_d");
+    params.set("saddr", `${routeFrom.lat},${routeFrom.lng}`);
+    params.set("daddr", `${routeTo.lat},${routeTo.lng}`);
+    params.set("z", "15");
+  } else {
+    params.set("q", `${center.lat},${center.lng}`);
+    params.set("z", "16");
+  }
+
+  params.set("hl", "ko");
+  params.set("output", "embed");
+  return `https://maps.google.com/maps?${params.toString()}`;
 }
 
 function mapToViewModel(request: SwapRequest): TrackingViewModel | null {
@@ -124,16 +198,14 @@ function mapToViewModel(request: SwapRequest): TrackingViewModel | null {
       }
     : null;
 
-  const locationMessage = request.tracking.metrics?.locationLive
-    ? "크루 위치가 실시간으로 업데이트되고 있어요."
-    : "최신 위치를 다시 확인하는 중이에요.";
-
   return {
     status,
     title: titleFor(status),
     subtitle: subtitleFor(status),
     pickupLocation: { lat: pickupLat, lng: pickupLng },
+    pickupAddress: request.pickupRequest?.address ?? request.booking?.address ?? "수거 위치 정보 없음",
     crewLocation: driverLocation,
+    crewUpdatedAt: request.tracking.driverLocation?.updatedAt ?? null,
     processingCenter: request.tracking.processingCenter ?? null,
     etaLabel: status === "delivered_to_hub" ? "전달 완료" : minutes > 0 ? `${minutes}분 예상` : "곧 도착",
     crewProfile: request.crewProfile
@@ -145,8 +217,9 @@ function mapToViewModel(request: SwapRequest): TrackingViewModel | null {
           phone: "+82-10-0000-0000",
         }
       : null,
-    locationMessage,
-    nearbyCrews: request.tracking.nearbyCrews ?? request.pickupRequest?.nearbyCrews ?? [],
+    locationMessage: request.tracking.metrics?.locationLive
+      ? `실시간 위치 갱신 ${request.tracking.driverLocation?.updatedAt ? formatDateTime(request.tracking.driverLocation.updatedAt) : ""}`.trim()
+      : "최신 위치를 확인하는 중이에요.",
     events: request.tracking.events ?? [],
   };
 }
@@ -154,10 +227,18 @@ function mapToViewModel(request: SwapRequest): TrackingViewModel | null {
 export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
   const [liveRequest, setLiveRequest] = useState<SwapRequest | null>(swapRequest);
   const [error, setError] = useState<string | null>(null);
+  const [now, setNow] = useState(() => formatPhoneTime());
 
   useEffect(() => {
     setLiveRequest(swapRequest);
   }, [swapRequest]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(formatPhoneTime());
+    }, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!swapRequest?.id) {
@@ -197,29 +278,33 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
       <section className="rounded-[28px] bg-white p-6 shadow-sm">
         <h2 className="text-xl font-black text-ink">수거 추적 정보가 아직 준비되지 않았어요</h2>
         <p className="mt-2 text-sm font-semibold text-slate-500">
-          예약 또는 바로콜 요청이 접수되면 이 화면에서 수거 크루의 이동 상태를 확인할 수 있습니다.
+          수거 요청이 접수되면 이 화면에서 크루 배정과 이동 상태를 바로 확인할 수 있어요.
         </p>
       </section>
     );
   }
 
   const currentStepIndex = progressIndex(viewModel.status);
-  const canOpenReward = viewModel.status === "delivered_to_hub";
+  const nextDestination =
+    viewModel.status === "en_route_hub" || viewModel.status === "delivered_to_hub"
+      ? viewModel.processingCenter
+      : viewModel.pickupLocation;
 
   return (
     <section className="overflow-hidden rounded-[28px] bg-white shadow-sm">
       <div className="bg-[linear-gradient(135deg,#fff5f8,#ffffff_55%,#f8fafc)] p-5">
-        <span className="inline-flex rounded-full bg-lgred/10 px-3 py-1 text-xs font-black text-lgred">
-          이동 중인 크루 확인
-        </span>
-        <div className="mt-4 flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-[2rem] font-black leading-tight text-ink">{viewModel.title}</h2>
+            <span className="inline-flex rounded-full bg-lgred/10 px-3 py-1 text-xs font-black text-lgred">
+              이동 중인 크루 확인
+            </span>
+            <h2 className="mt-4 text-[2rem] font-black leading-tight text-ink">{viewModel.title}</h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">{viewModel.subtitle}</p>
           </div>
           <div className="rounded-2xl bg-[#202632] px-4 py-3 text-right text-white">
-            <p className="text-xs font-black text-white/60">상태</p>
-            <p className="mt-1 text-base font-black">{viewModel.etaLabel}</p>
+            <p className="text-xs font-black text-white/60">현재 시간</p>
+            <p className="mt-1 text-lg font-black">{now}</p>
+            <p className="mt-1 text-xs font-bold text-white/70">{viewModel.etaLabel}</p>
           </div>
         </div>
       </div>
@@ -258,178 +343,192 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
               </a>
             ) : null}
           </div>
-          {viewModel.crewProfile ? (
-            <div className="mt-3 rounded-2xl bg-slate-50 p-3 text-xs font-semibold leading-5 text-slate-600">
-              <p>{viewModel.crewProfile.reviewSummary[0] ?? "친절하게 수거를 진행해요."}</p>
-              <p>{viewModel.crewProfile.reviewSummary[1] ?? "시간 약속을 잘 지켜요."}</p>
+
+          {viewModel.crewProfile?.reviewSummary?.length ? (
+            <div className="mt-4 rounded-2xl bg-[#fff7f9] px-4 py-3">
+              {viewModel.crewProfile.reviewSummary.slice(0, 2).map((review, index) => (
+                <p key={`${review}-${index}`} className="text-sm font-semibold leading-6 text-slate-600">
+                  {review}
+                </p>
+              ))}
             </div>
           ) : null}
+
+          <TrackingMap
+            crewLocation={viewModel.crewLocation}
+            pickupLocation={viewModel.pickupLocation}
+            processingCenter={viewModel.processingCenter}
+            status={viewModel.status}
+          />
+
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <InfoCard
+              icon={<Navigation size={16} />}
+              title="크루 현재 위치"
+              value={formatCoordinates(viewModel.crewLocation)}
+              caption={viewModel.locationMessage}
+            />
+            <InfoCard
+              icon={<MapPin size={16} />}
+              title="수거 위치"
+              value={viewModel.pickupAddress}
+              caption={formatCoordinates(viewModel.pickupLocation)}
+            />
+            <InfoCard
+              icon={<Truck size={16} />}
+              title="크루 좌표 갱신"
+              value={formatDateTime(viewModel.crewUpdatedAt)}
+              caption="브라우저 현재 시간 기준으로 표시돼요."
+            />
+            <InfoCard
+              icon={<Warehouse size={16} />}
+              title="처리 허브"
+              value={viewModel.processingCenter?.label ?? "배정 후 안내"}
+              caption={
+                viewModel.processingCenter
+                  ? `${viewModel.processingCenter.lat.toFixed(5)}, ${viewModel.processingCenter.lng.toFixed(5)}`
+                  : "허브 좌표 없음"
+              }
+            />
+          </div>
         </div>
 
-        <div className="mt-4 overflow-hidden rounded-[28px] bg-slate-50">
-          <TrackingMap viewModel={viewModel} />
-        </div>
-
-        <div className="mt-4 rounded-[26px] bg-slate-50 p-4">
+        <div className="mt-4 rounded-[26px] border border-slate-200 bg-white p-5">
           <div className="flex items-center gap-2 text-sm font-black text-ink">
-            <Navigation size={16} />
+            <ShieldCheck size={16} className="text-lgred" />
             수거 진행 상태
           </div>
           <div className="mt-4 space-y-4">
             {progressSteps.map((step, index) => {
               const active = index <= currentStepIndex;
-              const time = progressTime(step.key, viewModel.events);
+              const event = viewModel.events[index];
+
               return (
-                <div key={step.key} className="grid grid-cols-[16px_minmax(0,1fr)_64px] items-start gap-3">
+                <div key={step.key} className="flex gap-4">
                   <div className="flex flex-col items-center">
-                    <span className={`h-4 w-4 rounded-full ${active ? "bg-lgred" : "bg-slate-200"}`} />
+                    <span
+                      className={`h-4 w-4 rounded-full border-4 ${
+                        active ? "border-lgred bg-lgred" : "border-slate-300 bg-white"
+                      }`}
+                    />
                     {index < progressSteps.length - 1 ? (
-                      <span className={`mt-1 h-10 w-[3px] rounded-full ${active ? "bg-lgred/70" : "bg-slate-200"}`} />
+                      <span className={`mt-1 h-10 w-[2px] ${active ? "bg-lgred/50" : "bg-slate-200"}`} />
                     ) : null}
                   </div>
-                  <div>
-                    <p className={`text-sm font-black ${active ? "text-ink" : "text-slate-400"}`}>{step.label}</p>
-                    <p className="mt-1 text-xs font-semibold text-slate-500">{helperText(step.key)}</p>
+                  <div className="flex-1 pb-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className={`text-base font-black ${active ? "text-ink" : "text-slate-400"}`}>{step.label}</p>
+                      <span className="text-sm font-bold text-slate-400">{formatDateTime(event?.createdAt ?? null)}</span>
+                    </div>
+                    <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                      {event?.message ?? defaultEventMessage(step.key)}
+                    </p>
                   </div>
-                  <p className={`text-right text-xs font-semibold ${active ? "text-slate-500" : "text-slate-300"}`}>{time}</p>
                 </div>
               );
             })}
           </div>
+
+          {error ? (
+            <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-700">{error}</p>
+          ) : null}
+
+          {viewModel.status === "delivered_to_hub" ? (
+            <button
+              className="mt-4 h-12 w-full rounded-2xl bg-lgred text-sm font-black text-white"
+              onClick={onNext}
+              type="button"
+            >
+              다음 단계로 이동
+            </button>
+          ) : null}
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <InfoCard icon={<MapPin size={16} />} title="현재 상태" value={viewModel.locationMessage} />
-          <InfoCard
-            icon={<ShieldCheck size={16} />}
-            title="처리 허브"
-            value={viewModel.processingCenter?.label ?? "배정 후 표시"}
-          />
-        </div>
-
-        {error ? (
-          <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-700">{error}</p>
-        ) : null}
-
-        <button
-          className="mt-5 h-12 w-full rounded-2xl bg-lgred text-sm font-black text-white disabled:bg-slate-300"
-          disabled={!canOpenReward}
-          onClick={onNext}
-          type="button"
-        >
-          {canOpenReward ? "전체 보상 확인으로 이동" : "e-waste 공장 전달 대기 중"}
-        </button>
+        {nextDestination ? null : (
+          <p className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold text-slate-500">
+            지도 표시를 위해 수거지 좌표가 필요합니다.
+          </p>
+        )}
       </div>
     </section>
   );
 }
 
-function TrackingMap({ viewModel }: { viewModel: TrackingViewModel }) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
-
-  if (!apiKey) {
-    return <FallbackMap viewModel={viewModel} />;
-  }
-
-  return <GoogleTrackingMap apiKey={apiKey} viewModel={viewModel} />;
-}
-
-function GoogleTrackingMap({
-  apiKey,
-  viewModel,
+function TrackingMap({
+  crewLocation,
+  pickupLocation,
+  processingCenter,
+  status,
 }: {
-  apiKey: string;
-  viewModel: TrackingViewModel;
+  crewLocation: Coordinates | null;
+  pickupLocation: Coordinates;
+  processingCenter: { label: string; lat: number; lng: number } | null;
+  status: PickupTrackingStatus;
 }) {
-  const { isLoaded, loadError } = useJsApiLoader({ googleMapsApiKey: apiKey });
-  const center = viewModel.crewLocation ?? viewModel.pickupLocation;
-  const routePath = useMemo(() => {
-    if (viewModel.crewLocation && viewModel.processingCenter && viewModel.status === "en_route_hub") {
-      return [viewModel.crewLocation, viewModel.processingCenter];
-    }
-    if (viewModel.crewLocation) {
-      return [viewModel.crewLocation, viewModel.pickupLocation];
-    }
-    return [viewModel.pickupLocation];
-  }, [viewModel]);
+  const routeTarget =
+    status === "en_route_hub" || status === "delivered_to_hub"
+      ? processingCenter
+        ? { lat: processingCenter.lat, lng: processingCenter.lng }
+        : pickupLocation
+      : pickupLocation;
 
-  if (loadError || !isLoaded) {
-    return <FallbackMap viewModel={viewModel} />;
-  }
+  const embedUrl = buildGoogleMapEmbedUrl({
+    center: routeTarget,
+    routeFrom: crewLocation,
+    routeTo: routeTarget,
+  });
 
   return (
-    <GoogleMap
-      center={center}
-      mapContainerClassName="h-[360px] w-full"
-      options={{
-        clickableIcons: false,
-        disableDefaultUI: true,
-        gestureHandling: "greedy",
-        styles: [
-          { featureType: "poi", stylers: [{ visibility: "off" }] },
-          { featureType: "transit", stylers: [{ visibility: "off" }] },
-        ],
-      }}
-      zoom={15}
-    >
-      <MarkerF position={viewModel.pickupLocation} label={{ color: "#ffffff", fontWeight: "900", text: "수거" }} />
-      {viewModel.processingCenter ? (
-        <MarkerF
-          position={viewModel.processingCenter}
-          label={{ color: "#ffffff", fontWeight: "900", text: "허브" }}
-        />
-      ) : null}
-      {viewModel.crewLocation ? (
-        <MarkerF position={viewModel.crewLocation} label={{ color: "#ffffff", fontWeight: "900", text: "크루" }} />
-      ) : null}
-      {viewModel.crewLocation ? (
-        <PolylineF
-          path={routePath}
-          options={{ strokeColor: "#A50034", strokeOpacity: 0.85, strokeWeight: 5 }}
-        />
-      ) : null}
-    </GoogleMap>
-  );
-}
-
-function FallbackMap({ viewModel }: { viewModel: TrackingViewModel }) {
-  return (
-    <div className="relative h-[360px] overflow-hidden bg-[radial-gradient(circle_at_72%_24%,rgba(165,0,52,.12),transparent_22%),linear-gradient(180deg,#f8fafc,#eef2f7)]">
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(148,163,184,.15)_1px,transparent_1px),linear-gradient(0deg,rgba(148,163,184,.15)_1px,transparent_1px)] bg-[length:28px_28px]" />
-      <span className="absolute left-[10%] top-[26%] h-3 w-[78%] rotate-[12deg] rounded-full bg-white/90 shadow-sm" />
-      <span className="absolute left-[8%] top-[62%] h-3 w-[84%] -rotate-[9deg] rounded-full bg-white/90 shadow-sm" />
-      <div className="absolute left-[54%] top-[32%] z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-[#A50034] text-xs font-black text-white shadow-xl">
-        크루
-      </div>
-      <div className="absolute bottom-[22%] right-[18%] z-10 flex h-12 w-12 items-center justify-center rounded-full border-4 border-white bg-[#202632] text-xs font-black text-white shadow-lg">
-        수거
-      </div>
-      <div className="absolute left-4 top-4 rounded-full bg-white/95 px-4 py-2 text-sm font-black text-ink shadow">
-        {viewModel.title}
+    <div className="mt-5 overflow-hidden rounded-[24px] border border-slate-200 bg-slate-100">
+      <iframe
+        className="h-[320px] w-full border-0"
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        src={embedUrl}
+        title="swapit-tracking-map"
+      />
+      <div className="grid grid-cols-1 gap-2 border-t border-slate-200 bg-white p-3 text-xs font-bold text-slate-500 sm:grid-cols-3">
+        <MapLegend colorClass="bg-[#2563eb]" label="수거 위치" />
+        <MapLegend colorClass="bg-[#dc2626]" label="크루 현재 위치" />
+        <MapLegend colorClass="bg-[#16a34a]" label="처리 허브" />
       </div>
     </div>
   );
 }
 
-function progressIndex(status: PickupTrackingStatus) {
-  switch (status) {
-    case "waiting":
-      return 0;
-    case "crew_assigned":
-      return 1;
-    case "en_route_pickup":
-      return 2;
-    case "arrived":
-    case "en_route_hub":
-      return 3;
-    case "delivered_to_hub":
-      return 4;
-    default:
-      return 0;
-  }
+function MapLegend({ colorClass, label }: { colorClass: string; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`h-2.5 w-2.5 rounded-full ${colorClass}`} />
+      {label}
+    </div>
+  );
 }
 
-function helperText(stepKey: (typeof progressSteps)[number]["key"]) {
+function InfoCard({
+  icon,
+  title,
+  value,
+  caption,
+}: {
+  icon: ReactNode;
+  title: string;
+  value: string;
+  caption: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-slate-50 p-4">
+      <div className="flex items-center gap-2 text-xs font-black text-lgred">
+        {icon}
+        {title}
+      </div>
+      <p className="mt-2 text-sm font-black leading-6 text-ink">{value}</p>
+      <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{caption}</p>
+    </div>
+  );
+}
+
+function defaultEventMessage(stepKey: (typeof progressSteps)[number]["key"]) {
   switch (stepKey) {
     case "REQUESTED":
       return "예약 또는 바로콜 요청이 접수된 상태입니다.";
@@ -440,54 +539,6 @@ function helperText(stepKey: (typeof progressSteps)[number]["key"]) {
     case "ARRIVED":
       return "문앞 도착 후 실물 확인과 수거가 진행됩니다.";
     case "HUB_DONE":
-      return "e-waste 공장 전달 완료 시 안심 처리 완료 알림이 표시됩니다.";
-    default:
-      return "";
+      return "e-waste 공장 전달 완료 시 안심처리 완료 알림이 표시됩니다.";
   }
-}
-
-function progressTime(stepKey: string, events: NonNullable<SwapRequest["tracking"]["events"]>) {
-  const event = [...events].reverse().find((item) => {
-    if (stepKey === "REQUESTED") return item.eventType.includes("REQUEST") || item.eventType === "BOOKING_CONFIRMED";
-    if (stepKey === "ASSIGNED") return item.eventType === "CREW_ASSIGNED";
-    if (stepKey === "EN_ROUTE") return item.eventType === "CREW_DEPARTED";
-    if (stepKey === "ARRIVED") return item.eventType === "CREW_ARRIVED";
-    if (stepKey === "HUB_DONE") return item.eventType === "EWASTE_HUB_DELIVERED";
-    return false;
-  });
-
-  if (!event) {
-    return "--:--";
-  }
-
-  const date = new Date(event.createdAt);
-  if (Number.isNaN(date.getTime())) {
-    return "--:--";
-  }
-
-  return new Intl.DateTimeFormat("ko-KR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
-}
-
-function InfoCard({
-  icon,
-  title,
-  value,
-}: {
-  icon: ReactNode;
-  title: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-[24px] bg-slate-50 p-4">
-      <div className="flex items-center gap-2 text-xs font-black text-slate-400">
-        {icon}
-        {title}
-      </div>
-      <p className="mt-2 text-sm font-black leading-6 text-ink">{value}</p>
-    </div>
-  );
 }

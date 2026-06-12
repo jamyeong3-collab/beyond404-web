@@ -515,13 +515,36 @@ function previousStep(step: SwapStep): SwapStep {
 }
 
 function PhoneStatusBar({ isDark }: { isDark: boolean }) {
+  const [currentTime, setCurrentTime] = useState(() =>
+    new Intl.DateTimeFormat("ko-KR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).format(new Date()),
+  );
+
+  useEffect(() => {
+    const update = () =>
+      setCurrentTime(
+        new Intl.DateTimeFormat("ko-KR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }).format(new Date()),
+      );
+
+    update();
+    const timer = window.setInterval(update, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   return (
     <div
       className={`relative z-30 flex h-[62px] items-start justify-between px-8 pt-4 text-[12px] font-bold ${
         isDark ? "text-white" : "text-ink"
       }`}
     >
-      <span>10:24</span>
+      <span>{currentTime}</span>
       <div className="flex items-center gap-1.5">
         <CellularBars />
         <WifiGlyph />

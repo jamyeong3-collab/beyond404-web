@@ -1,6 +1,5 @@
 "use client";
 
-import { GoogleMap, MarkerF, useJsApiLoader } from "@/components/maps/google-maps-compat";
 import type { SwapRequest } from "@/types/swap";
 import { CalendarCheck, Crosshair, Loader2, MapPin, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -80,6 +79,16 @@ function formatReservedAt(date: string, time: string) {
 function isSecureGpsAvailable() {
   if (typeof window === "undefined") return false;
   return window.isSecureContext && "geolocation" in navigator;
+}
+
+function buildGoogleMapEmbedUrl(center: PickupCoordinates) {
+  const params = new URLSearchParams({
+    q: `${center.lat},${center.lng}`,
+    z: "16",
+    hl: "ko",
+    output: "embed",
+  });
+  return `https://maps.google.com/maps?${params.toString()}`;
 }
 
 async function reverseGeocode(latitude: number, longitude: number) {
@@ -335,7 +344,7 @@ function InstantCallBooking({
       try {
         nextAddress = await reverseGeocode(nextCoords.lat, nextCoords.lng);
       } catch {
-        // Reverse geocoding can fail independently from GPS. The coordinates are still valid.
+        // Reverse geocoding failure should not block GPS usage.
       }
 
       setGpsCoords(nextCoords);
@@ -420,7 +429,7 @@ function InstantCallBooking({
         <PickupPreviewMap
           addressLabel={mapLabel}
           coordinates={activeCoords}
-          pinLabel={pickupMethod === "gps" ? "내 위치" : "수거"}
+          pinLabel={pickupMethod === "gps" ? "M" : "P"}
         />
       </div>
 
@@ -496,61 +505,28 @@ function PickupPreviewMap({
   coordinates: PickupCoordinates | null;
   pinLabel: string;
 }) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
-
   if (!coordinates) {
     return <PickupMapFallback addressLabel={addressLabel} />;
   }
 
-  if (!apiKey) {
-    return <PickupMapFallback addressLabel={addressLabel} showMarker />;
-  }
-
-  return <GooglePickupPreviewMap addressLabel={addressLabel} apiKey={apiKey} coordinates={coordinates} pinLabel={pinLabel} />;
-}
-
-function GooglePickupPreviewMap({
-  addressLabel,
-  apiKey,
-  coordinates,
-  pinLabel,
-}: {
-  addressLabel: string;
-  apiKey: string;
-  coordinates: PickupCoordinates;
-  pinLabel: string;
-}) {
-  const { isLoaded, loadError } = useJsApiLoader({ googleMapsApiKey: apiKey });
-
-  if (loadError || !isLoaded) {
-    return <PickupMapFallback addressLabel={addressLabel} showMarker />;
-  }
+  const embedUrl = buildGoogleMapEmbedUrl(coordinates);
 
   return (
     <div className="relative h-[360px] w-full overflow-hidden bg-slate-100">
-      <GoogleMap
-        center={coordinates}
-        mapContainerClassName="h-[360px] w-full"
-        options={{
-          clickableIcons: false,
-          disableDefaultUI: true,
-          gestureHandling: "greedy",
-          styles: [
-            { featureType: "poi", stylers: [{ visibility: "off" }] },
-            { featureType: "transit", stylers: [{ visibility: "off" }] },
-          ],
-        }}
-        zoom={16}
-      >
-        <MarkerF position={coordinates} label={{ color: "#ffffff", fontWeight: "900", text: pinLabel }} />
-      </GoogleMap>
+      <iframe
+        className="h-full w-full border-0"
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        src={embedUrl}
+        title="pickup-preview-map"
+      />
       <div className="pointer-events-none absolute left-4 top-4 rounded-full bg-white/95 px-4 py-2 text-sm font-black text-ink shadow">
         {addressLabel}
       </div>
       <div className="pointer-events-none absolute bottom-4 right-4 rounded-full bg-[#1f6fff] px-3 py-2 text-xs font-black text-white shadow-lg">
         <span className="flex items-center gap-1">
           <MapPin size={14} />
-          {pinLabel}
+          {pinLabel === "M" ? "내 위치" : "수거 위치"}
         </span>
       </div>
     </div>
