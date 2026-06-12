@@ -3,12 +3,18 @@
 import { getTracking } from "@/lib/api";
 import type { SwapRequest } from "@/types/swap";
 import { MapPin, Navigation, Phone, ShieldCheck, Star, Truck, Warehouse } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 type TrackingPanelProps = {
   swapRequest: SwapRequest | null;
   onNext: () => void;
 };
+
+const LeafletTrackingMap = dynamic(
+  () => import("@/components/maps/LeafletTrackingMap").then((module) => module.LeafletTrackingMap),
+  { ssr: false },
+);
 
 type PickupTrackingStatus =
   | "waiting"
@@ -152,33 +158,6 @@ function progressIndex(status: PickupTrackingStatus) {
     default:
       return 0;
   }
-}
-
-function buildGoogleMapEmbedUrl({
-  center,
-  routeFrom,
-  routeTo,
-}: {
-  center: Coordinates;
-  routeFrom?: Coordinates | null;
-  routeTo?: Coordinates | null;
-}) {
-  const params = new URLSearchParams();
-
-  if (routeFrom && routeTo) {
-    params.set("f", "d");
-    params.set("source", "s_d");
-    params.set("saddr", `${routeFrom.lat},${routeFrom.lng}`);
-    params.set("daddr", `${routeTo.lat},${routeTo.lng}`);
-    params.set("z", "15");
-  } else {
-    params.set("q", `${center.lat},${center.lng}`);
-    params.set("z", "16");
-  }
-
-  params.set("hl", "ko");
-  params.set("output", "embed");
-  return `https://maps.google.com/maps?${params.toString()}`;
 }
 
 function mapToViewModel(request: SwapRequest): TrackingViewModel | null {
@@ -471,21 +450,22 @@ function TrackingMap({
         ? { lat: processingCenter.lat, lng: processingCenter.lng }
         : pickupLocation
       : pickupLocation;
-
-  const embedUrl = buildGoogleMapEmbedUrl({
-    center: routeTarget,
-    routeFrom: crewLocation,
-    routeTo: routeTarget,
-  });
+  const markers = [
+    { key: "pickup", label: "P", position: pickupLocation, variant: "pickup" as const },
+    ...(crewLocation ? [{ key: "crew", label: "C", position: crewLocation, variant: "crew" as const }] : []),
+    ...(processingCenter
+      ? [{ key: "hub", label: "H", position: { lat: processingCenter.lat, lng: processingCenter.lng }, variant: "hub" as const }]
+      : []),
+  ];
+  const path = crewLocation ? [crewLocation, routeTarget] : [];
 
   return (
     <div className="mt-5 overflow-hidden rounded-[24px] border border-slate-200 bg-slate-100">
-      <iframe
-        className="h-[320px] w-full border-0"
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-        src={embedUrl}
-        title="swapit-tracking-map"
+      <LeafletTrackingMap
+        center={crewLocation ?? routeTarget}
+        className="h-[320px] w-full"
+        markers={markers}
+        path={path}
       />
       <div className="grid grid-cols-1 gap-2 border-t border-slate-200 bg-white p-3 text-xs font-bold text-slate-500 sm:grid-cols-3">
         <MapLegend colorClass="bg-[#2563eb]" label="수거 위치" />

@@ -2,6 +2,7 @@
 
 import type { SwapRequest } from "@/types/swap";
 import { CalendarCheck, Crosshair, Loader2, MapPin, Search } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
 type BookingPanelProps = {
@@ -34,6 +35,11 @@ export type BookingSelection = {
   bookingDate?: string;
   bookingTime?: string;
 };
+
+const LeafletTrackingMap = dynamic(
+  () => import("@/components/maps/LeafletTrackingMap").then((module) => module.LeafletTrackingMap),
+  { ssr: false },
+);
 
 const defaultPickupCoords = { lat: 37.5665, lng: 126.978 };
 const defaultAddress = "서울특별시 중구 세종대로 110";
@@ -79,16 +85,6 @@ function formatReservedAt(date: string, time: string) {
 function isSecureGpsAvailable() {
   if (typeof window === "undefined") return false;
   return window.isSecureContext && "geolocation" in navigator;
-}
-
-function buildGoogleMapEmbedUrl(center: PickupCoordinates) {
-  const params = new URLSearchParams({
-    q: `${center.lat},${center.lng}`,
-    z: "16",
-    hl: "ko",
-    output: "embed",
-  });
-  return `https://maps.google.com/maps?${params.toString()}`;
 }
 
 async function reverseGeocode(latitude: number, longitude: number) {
@@ -509,16 +505,19 @@ function PickupPreviewMap({
     return <PickupMapFallback addressLabel={addressLabel} />;
   }
 
-  const embedUrl = buildGoogleMapEmbedUrl(coordinates);
-
   return (
     <div className="relative h-[360px] w-full overflow-hidden bg-slate-100">
-      <iframe
-        className="h-full w-full border-0"
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-        src={embedUrl}
-        title="pickup-preview-map"
+      <LeafletTrackingMap
+        center={coordinates}
+        className="h-full w-full"
+        markers={[
+          {
+            key: "pickup-preview",
+            label: pinLabel,
+            position: coordinates,
+            variant: "pickup",
+          },
+        ]}
       />
       <div className="pointer-events-none absolute left-4 top-4 rounded-full bg-white/95 px-4 py-2 text-sm font-black text-ink shadow">
         {addressLabel}
