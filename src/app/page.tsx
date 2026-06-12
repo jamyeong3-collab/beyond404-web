@@ -327,12 +327,12 @@ export default function HomePage() {
   const isSwapCaptureScreen = Boolean(demoUser) && swapItOpened && swapStep === "capture" && !marketOpened;
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#202124] px-3 py-8">
-      <section className="relative w-[min(100%,424px)] rounded-[52px] border-[8px] border-[#090a0f] bg-[#090a0f] p-[3px] shadow-phone">
-        <div className="pointer-events-none absolute left-1/2 top-[22px] z-20 flex h-9 w-[126px] -translate-x-1/2 items-center justify-end rounded-full bg-black pr-3">
+    <main className="min-h-screen bg-cloud md:flex md:items-center md:justify-center md:bg-[#202124] md:px-3 md:py-8">
+      <section className="relative min-h-[100dvh] w-full bg-cloud md:min-h-0 md:w-[min(100%,424px)] md:rounded-[52px] md:border-[8px] md:border-[#090a0f] md:bg-[#090a0f] md:p-[3px] md:shadow-phone">
+        <div className="pointer-events-none absolute left-1/2 top-[22px] z-20 hidden h-9 w-[126px] -translate-x-1/2 items-center justify-end rounded-full bg-black pr-3 md:flex">
           <Camera size={13} className="text-slate-700" />
         </div>
-        <div className="aspect-[402/874] overflow-hidden rounded-[43px] bg-cloud">
+        <div className="h-[100dvh] overflow-hidden rounded-none bg-cloud md:aspect-[402/874] md:h-auto md:rounded-[43px]">
           {thinQOpened ? (
             <div
               className={`relative flex h-full animate-[fadeIn_.18s_ease-out] flex-col ${
@@ -517,7 +517,7 @@ function previousStep(step: SwapStep): SwapStep {
 function PhoneStatusBar({ isDark }: { isDark: boolean }) {
   return (
     <div
-      className={`relative z-30 flex h-[62px] items-start justify-between px-8 pt-4 text-[12px] font-bold ${
+      className={`relative z-30 hidden h-[62px] items-start justify-between px-8 pt-4 text-[12px] font-bold md:flex ${
         isDark ? "text-white" : "text-ink"
       }`}
     >
