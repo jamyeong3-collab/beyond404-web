@@ -699,6 +699,14 @@ function DemoLoginScreen({
     if (error.message.includes("auth/too-many-requests")) {
       return "로그인 시도가 많습니다. 잠시 후 다시 시도해주세요.";
     }
+    if (error.message.includes("Email verification is required")) {
+      return "이메일 인증을 먼저 완료해주세요.";
+    }
+    if (error.message.includes("요청 값이 올바르지 않습니다")) {
+      return mode === "signup"
+        ? "입력한 이메일, 비밀번호, 이름, 전화번호를 다시 확인해주세요."
+        : "로그인 정보를 다시 확인해주세요.";
+    }
 
     return error.message;
   }
@@ -824,6 +832,7 @@ function DemoLoginScreen({
                 className="shrink-0 rounded-full bg-lgred px-4 py-2 text-[12px] font-black text-white disabled:bg-[#e8e8e8] disabled:text-[#aaa]"
                 disabled={verificationButtonDisabled}
                 onClick={() => {
+                  resetAuthFeedback();
                   if (pendingFirebaseUser) {
                     confirmEmailMutation.mutate();
                     return;
