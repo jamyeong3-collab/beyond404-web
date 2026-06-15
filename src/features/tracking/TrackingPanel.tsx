@@ -11,11 +11,6 @@ type TrackingPanelProps = {
   onNext: () => void;
 };
 
-const LeafletTrackingMap = dynamic(
-  () => import("@/components/maps/LeafletTrackingMap").then((module) => module.LeafletTrackingMap),
-  { ssr: false },
-);
-
 type PickupTrackingStatus =
   | "waiting"
   | "crew_assigned"
@@ -42,6 +37,9 @@ type TrackingViewModel = {
   crewUpdatedAt: string | null;
   processingCenter: { label: string; lat: number; lng: number } | null;
   etaLabel: string;
+  routeDistanceLabel: string;
+  routeDurationLabel: string;
+  routePath: Coordinates[];
   crewProfile: {
     name: string;
     photoUrl: string;
@@ -52,6 +50,18 @@ type TrackingViewModel = {
   locationMessage: string;
   events: NonNullable<SwapRequest["tracking"]["events"]>;
 };
+
+const LeafletTrackingMap = dynamic(
+  () => import("@/components/maps/LeafletTrackingMap").then((module) => module.LeafletTrackingMap),
+  { ssr: false },
+);
+
+const GoogleCanvasMap = dynamic(
+  () => import("@/components/maps/GoogleCanvasMap").then((module) => module.GoogleCanvasMap),
+  { ssr: false },
+);
+
+const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? "";
 
 const progressSteps = [
   { key: "REQUESTED", label: "요청 접수" },
@@ -123,7 +133,7 @@ function titleFor(status: PickupTrackingStatus) {
     case "arrived":
       return "크루가 문앞에 도착했어요";
     case "en_route_hub":
-      return "수거 후 e-waste 공장으로 이동 중이에요";
+      return "수거 후 처리 허브로 이동 중이에요";
     case "delivered_to_hub":
       return "e-waste 공장 전달이 완료되었어요";
     default:
@@ -134,17 +144,17 @@ function titleFor(status: PickupTrackingStatus) {
 function subtitleFor(status: PickupTrackingStatus) {
   switch (status) {
     case "crew_assigned":
-      return "배정된 크루의 현재 위치와 이동 상태를 바로 확인할 수 있어요.";
+      return "배정된 크루의 현재 위치와 프로필을 바로 확인할 수 있어요.";
     case "en_route_pickup":
-      return "실시간 위치가 들어오면 지도에서 크루 이동 경로를 따라갈 수 있어요.";
+      return "실시간으로 크루의 이동 경로와 예상 도착 시간을 확인할 수 있어요.";
     case "arrived":
-      return "문앞 도착 이후 현장 확인과 수거가 진행됩니다.";
+      return "문앞 도착 후 현장 확인과 수거가 진행됩니다.";
     case "en_route_hub":
-      return "수거 완료 후 처리 허브까지의 이동이 계속 업데이트됩니다.";
+      return "수거 완료 후 처리 허브까지 이동 상태가 계속 반영됩니다.";
     case "delivered_to_hub":
-      return "안심 처리 완료 상태입니다. 다음 단계로 넘어갈 수 있어요.";
+      return "안심처리 완료 단계까지 정상 반영되었어요.";
     default:
-      return "매칭 점수가 높은 크루에게 우선적으로 배차 알림을 보내고 있어요.";
+      return "매칭 점수가 높은 크루에게 우선 배차 알림을 보내고 있어요.";
   }
 }
 
@@ -180,6 +190,11 @@ function mapToViewModel(request: SwapRequest): TrackingViewModel | null {
         lng: request.tracking.driverLocation.lng,
       }
     : null;
+  const routePath =
+    request.tracking.route?.points?.map((point) => ({
+      lat: point.lat,
+      lng: point.lng,
+    })) ?? [];
 
   return {
     status,
@@ -193,7 +208,10 @@ function mapToViewModel(request: SwapRequest): TrackingViewModel | null {
     hubDistanceLabel: formatDistance(request.tracking.metrics?.crewToProcessingCenterMeters),
     crewUpdatedAt: request.tracking.driverLocation?.updatedAt ?? null,
     processingCenter: request.tracking.processingCenter ?? null,
-    etaLabel: status === "delivered_to_hub" ? "전달 완료" : minutes > 0 ? `${minutes}분 예상` : "곧 도착",
+    etaLabel: status === "delivered_to_hub" ? "처리 완료" : minutes > 0 ? `${minutes}분 예상` : "곧 도착",
+    routeDistanceLabel: request.tracking.route?.distanceLabel ?? "-",
+    routeDurationLabel: request.tracking.route?.durationLabel ?? "-",
+    routePath,
     crewProfile: request.crewProfile
       ? {
           name: request.crewProfile.name,
@@ -205,7 +223,7 @@ function mapToViewModel(request: SwapRequest): TrackingViewModel | null {
       : null,
     locationMessage: request.tracking.metrics?.locationLive
       ? `실시간 위치 갱신 ${request.tracking.driverLocation?.updatedAt ? formatDateTime(request.tracking.driverLocation.updatedAt) : ""}`.trim()
-      : "최신 위치를 확인하는 중이에요.",
+      : "최신 위치를 확인하는 중입니다.",
     events: request.tracking.events ?? [],
   };
 }
@@ -232,6 +250,7 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
     }
 
     let disposed = false;
+
     const fetchTracking = async () => {
       try {
         const latest = await getTracking(swapRequest.id);
@@ -344,6 +363,7 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
             crewLocation={viewModel.crewLocation}
             pickupLocation={viewModel.pickupLocation}
             processingCenter={viewModel.processingCenter}
+            routePath={viewModel.routePath}
             status={viewModel.status}
           />
 
@@ -362,11 +382,11 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
             />
             <InfoCard
               icon={<Truck size={16} />}
-              title="크루 좌표 갱신"
-              value={formatDateTime(viewModel.crewUpdatedAt)}
-              caption="브라우저 현재 시간 기준으로 표시돼요."
+              title="예상 소요 시간"
+              value={viewModel.routeDurationLabel}
+              caption={`현재 경로 기준 거리 ${viewModel.routeDistanceLabel}`}
             />
-            <InfoCard
+            <InfoCarda
               icon={<Warehouse size={16} />}
               title="처리 허브"
               value={viewModel.processingCenter?.label ?? "배정 후 안내"}
@@ -428,7 +448,7 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
 
         {nextDestination ? null : (
           <p className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold text-slate-500">
-            지도 표시를 위해 수거지 좌표가 필요합니다.
+            지도를 표시하려면 수거지 좌표가 필요합니다.
           </p>
         )}
       </div>
@@ -440,11 +460,13 @@ function TrackingMap({
   crewLocation,
   pickupLocation,
   processingCenter,
+  routePath,
   status,
 }: {
   crewLocation: Coordinates | null;
   pickupLocation: Coordinates;
   processingCenter: { label: string; lat: number; lng: number } | null;
+  routePath: Coordinates[];
   status: PickupTrackingStatus;
 }) {
   const routeTarget =
@@ -453,6 +475,7 @@ function TrackingMap({
         ? { lat: processingCenter.lat, lng: processingCenter.lng }
         : pickupLocation
       : pickupLocation;
+
   const markers = [
     { key: "pickup", label: "P", position: pickupLocation, variant: "pickup" as const },
     ...(crewLocation ? [{ key: "crew", label: "C", position: crewLocation, variant: "crew" as const }] : []),
@@ -460,16 +483,29 @@ function TrackingMap({
       ? [{ key: "hub", label: "H", position: { lat: processingCenter.lat, lng: processingCenter.lng }, variant: "hub" as const }]
       : []),
   ];
-  const path = crewLocation ? [crewLocation, routeTarget] : [];
+
+  const path = routePath.length > 1 ? routePath : crewLocation ? [crewLocation, routeTarget] : [];
 
   return (
     <div className="mt-5 overflow-hidden rounded-[24px] border border-slate-200 bg-slate-100">
-      <LeafletTrackingMap
-        center={crewLocation ?? routeTarget}
-        className="h-[320px] w-full"
-        markers={markers}
-        path={path}
-      />
+      {googleMapsApiKey ? (
+        <GoogleCanvasMap
+          apiKey={googleMapsApiKey}
+          center={crewLocation ?? routeTarget}
+          className="h-[320px] w-full"
+          fitBounds
+          markers={markers.map((marker) => ({
+            key: marker.key,
+            label: marker.label,
+            position: marker.position,
+            title: marker.key,
+          }))}
+          path={path}
+          zoom={16}
+        />
+      ) : (
+        <LeafletTrackingMap center={crewLocation ?? routeTarget} className="h-[320px] w-full" markers={markers} path={path} />
+      )}
       <div className="grid grid-cols-1 gap-2 border-t border-slate-200 bg-white p-3 text-xs font-bold text-slate-500 sm:grid-cols-3">
         <MapLegend colorClass="bg-[#2563eb]" label="수거 위치" />
         <MapLegend colorClass="bg-[#dc2626]" label="크루 현재 위치" />
@@ -514,14 +550,14 @@ function InfoCard({
 function defaultEventMessage(stepKey: (typeof progressSteps)[number]["key"]) {
   switch (stepKey) {
     case "REQUESTED":
-      return "예약 또는 바로콜 요청이 접수된 상태입니다.";
+      return "예약 또는 바로콜 요청이 정상 접수된 상태입니다.";
     case "ASSIGNED":
-      return "매칭 점수가 높은 크루가 배정됩니다.";
+      return "매칭 점수가 높은 크루가 배정되었습니다.";
     case "EN_ROUTE":
-      return "크루 위치가 실시간으로 갱신됩니다.";
+      return "크루 위치가 실시간으로 갱신되고 있습니다.";
     case "ARRIVED":
       return "문앞 도착 후 실물 확인과 수거가 진행됩니다.";
     case "HUB_DONE":
-      return "e-waste 공장 전달 완료 시 안심처리 완료 알림이 표시됩니다.";
+      return "e-waste 공장 전달 완료 후 안심처리 완료 알림이 표시됩니다.";
   }
 }

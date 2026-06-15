@@ -112,6 +112,31 @@ function createMarkerLabel(label?: string) {
   };
 }
 
+function MapResizer() {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    const refresh = () => {
+      window.requestAnimationFrame(() => {
+        map.invalidateSize();
+      });
+    };
+
+    refresh();
+    const timer = window.setTimeout(refresh, 180);
+    const observer = new ResizeObserver(() => refresh());
+    observer.observe(container);
+
+    return () => {
+      window.clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [map]);
+
+  return null;
+}
+
 export function LeafletTrackingMap({
   center,
   markers,

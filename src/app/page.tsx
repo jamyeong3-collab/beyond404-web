@@ -6,6 +6,7 @@ import {
   reload,
   sendEmailVerification,
   signInWithEmailAndPassword,
+  signOut,
   updateProfile,
   type User as FirebaseUser,
 } from "firebase/auth";
@@ -20,7 +21,6 @@ import {
   Clock,
   CreditCard,
   Home,
-  Info,
   Microwave,
   Recycle,
   Refrigerator,
@@ -375,6 +375,12 @@ export default function HomePage() {
 
 
   const resetDemoLogin = () => {
+    try {
+      void signOut(getClientAuth()).catch(() => undefined);
+    } catch {
+      // Firebase 설정이 없는 개발 환경에서도 앱 로그아웃은 계속 진행합니다.
+    }
+
     window.localStorage.removeItem("swapit-demo-user");
     setDemoUser(null);
     setMarketOpened(false);
@@ -399,16 +405,21 @@ export default function HomePage() {
             <div
               className={`relative flex h-full animate-[fadeIn_.18s_ease-out] flex-col ${
                 isSwapIntroScreen
-                  ? "swapit-pattern-bg"
+                  ? "bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,.38),transparent_28%),linear-gradient(180deg,#f47783_0%,#e95d6a_48%,#d94a59_100%)]"
                   : isSwapCaptureScreen
                     ? "bg-[#111318]"
-                    : "bg-cloud"
+                    : "bg-white"
               }`}
             >
               {isSwapIntroScreen ? (
                 <IndianPatternOverlay className="z-0" />
               ) : null}
-              {!isSwapCaptureScreen ? <PhoneStatusBar isDark={isSwapIntroScreen} /> : null}
+              {!isSwapCaptureScreen ? (
+                <PhoneStatusBar
+                  isDark={isSwapIntroScreen}
+                  className={isSwapIntroScreen ? "bg-transparent" : demoUser && !marketOpened ? "bg-cloud" : "bg-white"}
+                />
+              ) : null}
               {!demoUser ? (
                 <DemoLoginScreen
                   onBack={() => {
@@ -602,7 +613,7 @@ function previousStep(step: SwapStep): SwapStep {
   }
 }
 
-function PhoneStatusBar({ isDark }: { isDark: boolean }) {
+function PhoneStatusBar({ isDark, className = "" }: { isDark: boolean; className?: string }) {
   const [currentTime, setCurrentTime] = useState(() =>
     new Intl.DateTimeFormat("ko-KR", {
       hour: "2-digit",
@@ -628,7 +639,7 @@ function PhoneStatusBar({ isDark }: { isDark: boolean }) {
 
   return (
     <div
-      className={`relative z-30 hidden h-[62px] items-start justify-between px-8 pt-4 text-[12px] font-bold md:flex ${
+      className={`relative z-30 hidden h-[62px] items-start justify-between px-8 pt-4 text-[12px] font-bold md:flex ${className} ${
         isDark ? "text-white" : "text-ink"
       }`}
     >
@@ -653,6 +664,7 @@ function DemoLoginScreen({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberLogin, setRememberLogin] = useState(false);
   const [userName, setUserName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [pendingFirebaseUser, setPendingFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -691,10 +703,13 @@ function DemoLoginScreen({
       return "비밀번호는 6자리 이상으로 입력해주세요.";
     }
     if (error.message.includes("auth/invalid-credential") || error.message.includes("auth/user-not-found")) {
-      return "가입 정보가 없습니다. 이메일과 비밀번호를 확인해주세요.";
+      return "이메일 또는 비밀번호가 올바르지 않습니다.";
     }
     if (error.message.includes("auth/wrong-password")) {
       return "비밀번호가 올바르지 않습니다.";
+    }
+    if (error.message.includes("auth/user-disabled")) {
+      return "사용할 수 없는 계정입니다. 다른 계정으로 로그인해주세요.";
     }
     if (error.message.includes("auth/too-many-requests")) {
       return "로그인 시도가 많습니다. 잠시 후 다시 시도해주세요.";
@@ -930,8 +945,8 @@ function DemoLoginScreen({
 
   return (
     <div className="phone-scroll flex min-h-0 flex-1 flex-col overflow-y-auto bg-white px-6 pb-7 pt-8">
-      <section>
-        <LgElectronicsLogo className="mb-20" />
+      <section className="mx-auto w-full max-w-[336px]">
+        <LgElectronicsLogo className="mb-12" />
 
         <label className="block border-b-2 border-black pb-4">
           <span className="sr-only">이메일</span>
@@ -970,12 +985,20 @@ function DemoLoginScreen({
           </div>
         </label>
 
-        <div className="mt-3 flex items-center justify-end gap-1 text-[18px] font-semibold text-[#858585]">
-          <span>로그인 정보 저장</span>
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#b55b7d] text-white">
-            <Info size={15} strokeWidth={2.8} />
+        <button
+          className="mt-3 flex items-center gap-2 text-[12px] font-semibold text-[#6f6f6f]"
+          onClick={() => setRememberLogin((value) => !value)}
+          type="button"
+        >
+          <span
+            className={`flex h-[18px] w-[18px] items-center justify-center rounded-full border ${
+              rememberLogin ? "border-lgred bg-lgred" : "border-[#cfcfcf] bg-white"
+            }`}
+          >
+            {rememberLogin ? <span className="h-[7px] w-[7px] rounded-full bg-white" /> : null}
           </span>
-        </div>
+          <span>로그인 정보 저장</span>
+        </button>
 
         {firebaseConfigMessage || currentError ? (
           <p className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
@@ -997,11 +1020,13 @@ function DemoLoginScreen({
           {emailLoginMutation.isPending ? "ThinQ 사용자 확인 중..." : "로그인"}
         </button>
 
-        <div className="mt-5 flex items-center justify-center gap-3 text-[18px] font-semibold text-[#8a8a8a]">
+        <div className="mt-6 flex items-center justify-center gap-2 text-[12px] font-semibold text-[#4e4e4e]">
           <span>아이디 찾기</span>
-          <span className="text-[#d5d5d5]">|</span>
+          <span className="text-[#bdbdbd]">|</span>
           <span>비밀번호 재설정</span>
-          <span className="text-[#d5d5d5]">|</span>
+        </div>
+
+        <div className="mt-3 flex justify-center">
           <button
             className="font-black text-[#555]"
             onClick={showSignupMode}
@@ -1017,28 +1042,9 @@ function DemoLoginScreen({
 
 function LgElectronicsLogo({ className = "" }: { className?: string }) {
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
-      <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#c80f61]">
-        <svg aria-hidden="true" className="h-11 w-11" viewBox="0 0 64 64">
-          <circle cx="24" cy="21" r="5.2" fill="white" />
-          <path
-            d="M31 18v27h17"
-            fill="none"
-            stroke="white"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="5.2"
-          />
-          <path
-            d="M49 45c5-5 7-13 4.5-21.5C50 12 39 5 27.3 7.2 15.2 9.5 7.3 20.8 9.6 32.8 11.8 44 21.7 51.8 33 51.8"
-            fill="none"
-            stroke="white"
-            strokeLinecap="round"
-            strokeWidth="4.4"
-          />
-        </svg>
-      </span>
-      <span className="text-[34px] font-black tracking-[-0.03em] text-[#777]">LG전자</span>
+    <div className={`flex items-baseline gap-2 ${className}`}>
+      <span className="text-[34px] font-black tracking-[-0.03em] text-[#777]">LG</span>
+      <span className="text-[34px] font-black tracking-[-0.03em] text-lgred">ThinQ</span>
     </div>
   );
 }
@@ -1079,37 +1085,58 @@ function ThinQHomeScreen({
   onLogout: () => void;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col px-4 pb-5">
-      <header className="mb-4 flex items-center justify-between">
+    <div className="flex min-h-0 flex-1 flex-col bg-cloud px-4 pb-3">
+      <header className="mb-3 flex items-center justify-between">
         <button
           aria-label="홈 화면으로 돌아가기"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-ink shadow-sm"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-ink"
           onClick={onBackHome}
         >
           <ArrowLeft size={18} />
         </button>
         <div className="text-center">
           <p className="text-xs font-black text-lgred">LG ThinQ</p>
-          <p className="text-[11px] font-semibold text-slate-400">Smart Home</p>
+          <p className="text-[11px] font-semibold text-slate-400">Home</p>
         </div>
         <button
-          className="h-9 rounded-full bg-white px-3 text-[11px] font-black text-lgred shadow-sm"
+          className="h-9 rounded-full px-3 text-[11px] font-black text-slate-500"
           onClick={onLogout}
         >
           로그아웃
         </button>
       </header>
 
-      <div className="phone-scroll flex-1 overflow-y-auto">
-        <section className="rounded-2xl bg-white p-5 shadow-sm">
-          <p className="text-sm font-semibold text-slate-500">안녕하세요</p>
-          <h1 className="mt-1 text-2xl font-black leading-tight text-ink">오늘의 집 상태</h1>
-          <div className="mt-3 rounded-xl bg-lgred/5 px-3 py-2 text-xs font-bold text-lgred">
-            로그인 사용자 {demoUser.userName} / {demoUser.phoneNumber}
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <DeviceCard icon={<WashingMachine size={25} />} label="세탁기" status="대기 중" />
-            <DeviceCard icon={<Refrigerator size={25} />} label="냉장고" status="정상" />
+      <div className="phone-scroll min-h-0 flex-1 space-y-3 overflow-y-auto pb-3">
+        <section className="px-1 pb-1 pt-2">
+          <p className="text-[15px] font-bold text-slate-500">{demoUser.userName}님, 안녕하세요</p>
+          <h1 className="mt-1 whitespace-nowrap text-[17px] font-black leading-tight text-ink sm:text-[18px]">
+            오늘도 우리 집은 안심 맑음 상태입니다.
+          </h1>
+        </section>
+
+        <section className="rounded-[20px] bg-white p-4 shadow-sm">
+          <button className="flex w-full items-center justify-between text-left" onClick={onOpenReservation}>
+            <span>
+              <span className="block text-[13px] font-bold text-slate-500">우리 집 상태</span>
+              <span className="mt-1 block text-[24px] font-black leading-none text-ink">안심</span>
+            </span>
+            <span className="rounded-full bg-lgred/10 px-3 py-1.5 text-[12px] font-black text-lgred">
+              방금 전 업데이트
+            </span>
+          </button>
+          <div className="mt-4 grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 pt-4">
+            <div>
+              <p className="text-[20px] font-black leading-none text-lgred">2대</p>
+              <p className="mt-1 text-[11px] font-bold text-slate-400">연결 가전</p>
+            </div>
+            <div className="pl-4">
+              <p className="text-[20px] font-black leading-none text-ink">0건</p>
+              <p className="mt-1 text-[11px] font-bold text-slate-400">점검 필요</p>
+            </div>
+            <div className="pl-4">
+              <p className="text-[20px] font-black leading-none text-ink">1건</p>
+              <p className="mt-1 text-[11px] font-bold text-slate-400">추천 케어</p>
+            </div>
           </div>
         </section>
 
@@ -1121,36 +1148,45 @@ function ThinQHomeScreen({
           />
         ) : null}
 
-        <section className="mt-4">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-black text-ink">추천 기능</h2>
-            <span className="text-xs font-semibold text-slate-400">For you</span>
+        <section className="rounded-[20px] bg-white p-2 shadow-sm">
+          <div className="flex items-center justify-between px-3 py-2.5">
+            <h2 className="text-sm font-black text-ink">내 디바이스</h2>
+            <button className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-500">
+              전체 2
+            </button>
           </div>
+          <div className="divide-y divide-slate-100">
+            <DeviceCard icon={<WashingMachine size={24} />} label="세탁기" status="대기 중" />
+            <DeviceCard icon={<Refrigerator size={24} />} label="냉장고" status="정상" />
+          </div>
+        </section>
+
+        <section className="rounded-[20px] bg-white p-2 shadow-sm">
           <button
-            className="flex w-full items-center gap-4 rounded-2xl bg-lgdark p-4 text-left text-white shadow-sm"
+            className="flex w-full items-center gap-3 rounded-[16px] p-3 text-left text-ink"
             onClick={onOpenSwapIt}
           >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15">
-              <Recycle size={26} />
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-lgred/10 text-lgred">
+              <Recycle size={24} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-black">SwapIt 가전 교환</span>
-              <span className="mt-1 block text-xs leading-5 text-white/70">
-                중고 가전을 수거하고 보상 크레딧으로 전환합니다.
+              <span className="mt-0.5 block truncate text-xs text-slate-500">
+                사진 등록부터 보상, 수거 예약까지
               </span>
             </span>
-            <ChevronRight size={20} />
+            <ChevronRight size={20} className="text-slate-300" />
           </button>
           <button
-            className="mt-3 flex w-full items-center gap-4 rounded-2xl bg-white p-4 text-left text-ink shadow-sm"
+            className="flex w-full items-center gap-3 rounded-[16px] p-3 text-left text-ink"
             onClick={onOpenMarket}
           >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-lgred/10 text-lgred">
-              <ShoppingBag size={25} />
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-slate-100 text-slate-600">
+              <ShoppingBag size={24} />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-black">LG 가전 마켓</span>
-              <span className="mt-1 block text-xs leading-5 text-slate-500">
+              <span className="mt-0.5 block truncate text-xs text-slate-500">
                 SwapIt 크레딧으로 공식 LG 상품 구매
               </span>
             </span>
@@ -1158,6 +1194,25 @@ function ThinQHomeScreen({
           </button>
         </section>
       </div>
+
+      <nav className="grid h-[70px] shrink-0 grid-cols-4 rounded-[22px] bg-white px-2 py-2 shadow-sm">
+        <button className="flex flex-col items-center justify-center gap-1 text-lgred">
+          <Home size={20} />
+          <span className="text-[10px] font-black">홈</span>
+        </button>
+        <button className="flex flex-col items-center justify-center gap-1 text-slate-400">
+          <Refrigerator size={20} />
+          <span className="text-[10px] font-black">디바이스</span>
+        </button>
+        <button className="flex flex-col items-center justify-center gap-1 text-slate-400" onClick={onOpenReview}>
+          <Sparkles size={20} />
+          <span className="text-[10px] font-black">케어</span>
+        </button>
+        <button className="flex flex-col items-center justify-center gap-1 text-slate-400" onClick={onOpenMarket}>
+          <ShoppingBag size={20} />
+          <span className="text-[10px] font-black">메뉴</span>
+        </button>
+      </nav>
     </div>
   );
 }
@@ -1273,29 +1328,28 @@ function SwapItStatusCard({
   const Icon = card.icon;
 
   return (
-    <section className="mt-4">
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-black text-ink">吏꾪뻾 以묒씤 ?덉빟</h2>
-        <span className="text-xs font-semibold text-slate-400">Status</span>
-      </div>
+    <section>
       <button
         className={
-          "flex w-full items-center gap-4 rounded-2xl p-4 text-left shadow-sm " +
+          "flex w-full items-center gap-3 rounded-[20px] p-4 text-left shadow-sm " +
           (isCompleted ? "bg-lgred text-white" : "bg-white text-ink")
         }
         onClick={onOpenReservation}
       >
         <span
           className={
-            "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl " +
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] " +
             (isCompleted ? "bg-white/15 text-white" : "bg-lgred/10 text-lgred")
           }
         >
-          <Icon size={25} />
+          <Icon size={22} />
         </span>
         <span className="min-w-0 flex-1">
+          <span className={"mb-0.5 block text-[11px] font-black " + (isCompleted ? "text-white/70" : "text-lgred")}>
+            진행 중인 예약
+          </span>
           <span className="block text-sm font-black">{card.title}</span>
-          <span className={"mt-1 block text-xs leading-5 " + (isCompleted ? "text-white/75" : "text-slate-500")}>
+          <span className={"mt-0.5 block truncate text-xs " + (isCompleted ? "text-white/75" : "text-slate-500")}>
             {card.description}
           </span>
         </span>
@@ -1704,43 +1758,93 @@ function SwapItIntro({
     microwave: "전자레인지",
     tv: "TV",
   };
+  const selectedLabel = applianceLabels[selectedAppliance];
 
   return (
-    <section className="relative min-h-full overflow-hidden bg-transparent px-6 pb-6 pt-0 text-white">
-      <div className="relative z-10 pt-3">
-        <p className="text-xs font-black text-white/80">LG ThinQ</p>
-        <h1 className="mt-5 text-5xl font-black leading-[1.02]">SwapIt</h1>
-        <p className="mt-4 max-w-[285px] text-sm font-semibold leading-6 text-white/85">
-          교환할 가전을 선택하고 사진을 등록하면 AI가 제품 상태를 분석해 예상 보상가를 계산합니다.
-          이후 LG 가전 구매와 수거 예약까지 한 번에 이어서 진행할 수 있습니다.
-        </p>
+    <section className="relative flex min-h-full flex-col overflow-hidden bg-transparent px-4 pb-4 pt-1 text-ink">
+      <div className="pointer-events-none absolute left-[-60px] top-[170px] h-52 w-52 rounded-full bg-white/12 blur-3xl" />
+      <div className="pointer-events-none absolute right-[-70px] top-[22px] h-44 w-44 rounded-full bg-white/16 blur-3xl" />
+
+      <div className="phone-scroll relative z-10 min-h-0 flex-1 overflow-y-auto pb-3">
+        <section className="px-1 pb-4 pt-4 text-white">
+          <p className="text-[13px] font-black text-white/75">LG ThinQ</p>
+          <h1 className="mt-2 text-[34px] font-black leading-none tracking-tight">SwapIt</h1>
+          <p className="mt-3 max-w-[310px] text-sm font-semibold leading-6 text-white/85">
+            교체할 가전을 선택하면 사진 촬영부터 보상가 확인, 수거 예약까지 한 번에 진행할 수 있어요.
+          </p>
+        </section>
+
+        <section className="rounded-[20px] bg-white p-4 shadow-sm">
+          <button className="flex w-full items-center justify-between text-left" onClick={onStart}>
+            <span>
+              <span className="block text-[13px] font-bold text-slate-500">선택한 가전</span>
+              <span className="mt-1 block text-[24px] font-black leading-none text-ink">{selectedLabel}</span>
+            </span>
+            <span className="rounded-full bg-lgred/10 px-3 py-1.5 text-[12px] font-black text-lgred">
+              STEP 1
+            </span>
+          </button>
+          <div className="mt-4 grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 pt-4">
+            <div className="min-w-0 px-2 first:pl-0">
+              <p className="text-[18px] font-black leading-none text-lgred">사진</p>
+              <p className="mt-1 text-[11px] font-bold text-slate-400">상태 분석</p>
+            </div>
+            <div className="min-w-0 px-2">
+              <p className="text-[18px] font-black leading-none text-ink">보상</p>
+              <p className="mt-1 text-[11px] font-bold text-slate-400">크레딧 확인</p>
+            </div>
+            <div className="min-w-0 px-2 last:pr-0">
+              <p className="text-[18px] font-black leading-none text-ink">수거</p>
+              <p className="mt-1 text-[11px] font-bold text-slate-400">예약 진행</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-3 rounded-[20px] bg-white p-2 shadow-sm">
+          <div className="flex items-center justify-between px-3 py-2.5">
+            <h2 className="text-sm font-black text-ink">교환할 가전 선택</h2>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-500">
+              {applianceOptions.length}개
+            </span>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {applianceOptions.map((option) => {
+              const Icon = option.icon;
+              const active = selectedAppliance === option.id;
+
+              return (
+                <button
+                  key={option.id}
+                  className="flex w-full items-center gap-3 rounded-[16px] px-3 py-3 text-left"
+                  onClick={() => onApplianceChange(option.id)}
+                >
+                  <span
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] ${
+                      active ? "bg-lgred text-white" : "bg-lgred/10 text-lgred"
+                    }`}
+                  >
+                    <Icon size={22} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-black text-ink">{applianceLabels[option.id]}</span>
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-black ${
+                      active ? "bg-lgred/10 text-lgred" : "bg-slate-100 text-slate-400"
+                    }`}
+                  >
+                    {active ? "선택됨" : "선택"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
       </div>
 
-      <p className="relative z-10 mb-3 mt-10 text-sm font-black text-white">교환할 가전을 선택해 주세요</p>
-      <div className="relative z-10 rounded-[28px] bg-white/95 p-4 text-ink shadow-xl shadow-black/10 backdrop-blur-sm">
-        <div className="grid grid-cols-2 gap-3">
-          {applianceOptions.map((option) => {
-            const Icon = option.icon;
-            const active = selectedAppliance === option.id;
-
-            return (
-              <button
-                key={option.id}
-                className={`rounded-2xl border p-4 text-left transition ${
-                  active
-                    ? "border-lgred bg-lgred text-white"
-                    : "border-slate-200 bg-slate-50 text-ink"
-                }`}
-                onClick={() => onApplianceChange(option.id)}
-              >
-                <Icon size={24} />
-                <span className="mt-3 block text-sm font-black">{applianceLabels[option.id]}</span>
-              </button>
-            );
-          })}
-        </div>
+      <div className="relative z-10 shrink-0 rounded-[22px] bg-white p-2 shadow-sm">
         <button
-          className="mt-4 h-12 w-full rounded-xl bg-lgred text-sm font-black text-white"
+          className="h-14 w-full rounded-[16px] bg-lgred text-sm font-black text-white"
           onClick={onStart}
         >
           사진 등록하러 가기
@@ -1764,10 +1868,16 @@ function DeviceCard({
   status: string;
 }) {
   return (
-    <div className="rounded-xl bg-cloud p-3">
-      <div className="text-lgred">{icon}</div>
-      <p className="mt-2 text-sm font-bold text-ink">{label}</p>
-      <p className="mt-1 text-xs text-slate-500">{status}</p>
+    <div className="flex items-center gap-3 rounded-[16px] px-3 py-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-lgred/10 text-lgred">{icon}</div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-black text-ink">{label}</p>
+        <p className="mt-0.5 text-xs font-semibold text-slate-500">{status}</p>
+      </div>
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-500">
+        보기
+      </span>
+      <ChevronRight size={18} className="text-slate-300" />
     </div>
   );
 }

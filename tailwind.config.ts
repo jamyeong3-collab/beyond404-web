@@ -10,9 +10,10 @@ const config: Config = {
     extend: {
       colors: {
         ink: "#111827",
-        violet: "#A50034",
-        lgred: "#A50034",
-        lgdark: "#6B0036",
+        violet: "#E95D6A",
+        lgred: "#E95D6A",
+        lgpink: "#F58A96",
+        lgdark: "#C84B58",
         mint: "#20b486",
         cloud: "#f7f8fb",
       },

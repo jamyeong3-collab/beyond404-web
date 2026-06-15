@@ -121,6 +121,26 @@ export type SwapRequest = {
       message: string;
       createdAt: string;
     }[];
+    route?: {
+      mode: string;
+      distanceMeters: number | null;
+      durationSeconds: number | null;
+      distanceLabel: string | null;
+      durationLabel: string | null;
+      encodedPolyline?: string | null;
+      points: {
+        lat: number;
+        lng: number;
+      }[];
+      calculatedAt?: string | null;
+    } | null;
+    locationHistory?: {
+      lat: number;
+      lng: number;
+      heading: number;
+      speed: number;
+      recordedAt: string;
+    }[];
   };
   finalValuation?: {
     amount: number | null;
