@@ -75,7 +75,7 @@ function todayString() {
 
 function formatDateLabel(value: string) {
   if (!value) {
-    return "날짜를 선택해 주세요";
+    return "날짜를 선택해 주세요.";
   }
 
   const date = new Date(`${value}T00:00:00`);
@@ -155,8 +155,8 @@ export function BookingPanel({ swapRequest, loading, onBooking }: BookingPanelPr
         STEP 3. 수거 예약
       </div>
       <p className="mt-1 text-xs leading-5 text-slate-500">
-        시간 예약은 날짜와 시간을 직접 선택하고, 바로콜은 현재 위치 또는 직접 입력한 주소를 기준으로 가장 가까운
-        수거 크루를 찾습니다.
+        시간 예약은 예약한 날짜와 시간에 맞춰 CS 엔지니어가 방문하도록 접수하고, 바로콜은 현재 위치 또는 직접 입력한 주소로
+        즉시 수거 예약을 진행합니다.
       </p>
 
       <div className="mt-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
@@ -220,17 +220,17 @@ function ScheduleBooking({
     <div>
       <div className="overflow-hidden rounded-3xl bg-slate-50">
         <PickupPreviewMap
-          addressLabel={pickupAddress || "수거 위치를 확인해 주세요"}
+          addressLabel={pickupAddress || "수거 위치를 확인해 주세요."}
           coordinates={pickupCoords}
           pinLabel="P"
         />
       </div>
 
       <p className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold leading-5 text-slate-500">
-        시간 예약에서도 선택한 수거 위치가 지도에 바로 표시됩니다.
+        예약 시간에 맞춰 방문할 수 있도록 수거 위치와 예약 일정을 함께 확인합니다.
       </p>
 
-      <div className="rounded-3xl bg-slate-50 p-4">
+      <div className="mt-4 rounded-3xl bg-slate-50 p-4">
         <p className="text-sm font-black text-ink">예약 날짜 선택</p>
         <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
           <label className="block text-xs font-black text-slate-400" htmlFor="pickup-date">
@@ -304,7 +304,7 @@ function ScheduleBooking({
         }
         type="button"
       >
-        {loading ? "예약 접수 중..." : "시간 예약 요청"}
+        {loading ? "예약 접수 중..." : "시간 예약하기"}
       </button>
     </div>
   );
@@ -332,8 +332,8 @@ function InstantCallBooking({
   const mapLabel = locating
     ? "현재 위치 확인 중..."
     : pickupMethod === "gps"
-      ? pickupAddress || "현재 위치를 확인해 주세요"
-      : detailAddress || pickupAddress || "수거 위치를 검색해 주세요";
+      ? pickupAddress || "현재 위치를 확인해 주세요."
+      : detailAddress || pickupAddress || "수거 위치를 검색해 주세요.";
 
   const refreshCurrentLocation = async () => {
     if (!isSecureGpsAvailable()) {
@@ -475,7 +475,7 @@ function InstantCallBooking({
       </div>
 
       <p className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold leading-5 text-slate-500">
-        지도에는 현재 선택된 수거 위치가 표시됩니다.
+        현재 선택한 수거 위치를 지도에서 바로 확인할 수 있습니다.
       </p>
 
       <div className="mt-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
@@ -491,7 +491,7 @@ function InstantCallBooking({
             </span>
             <div>
               <p className="text-xs font-black text-slate-400">내 위치 확인</p>
-              <p className="mt-1 text-lg font-black text-ink">{pickupAddress || "현재 위치를 확인해 주세요"}</p>
+              <p className="mt-1 text-lg font-black text-ink">{pickupAddress || "현재 위치를 확인해 주세요."}</p>
               <p className="mt-1 text-xs font-semibold text-slate-500">필요하면 상세 위치를 추가해 주세요.</p>
             </div>
           </div>
@@ -531,7 +531,7 @@ function InstantCallBooking({
         onClick={() => void startMatching()}
         type="button"
       >
-        {matching ? "근처 수거 크루 찾는 중..." : loading ? "바로콜 접수 중..." : "근처 수거 크루 찾기"}
+        {matching ? "바로콜 예약 접수 중..." : loading ? "바로콜 접수 중..." : "바로콜 예약하기"}
       </button>
     </div>
   );
@@ -594,7 +594,7 @@ function PickupPreviewMap({
       <div className="pointer-events-none absolute bottom-4 right-4 rounded-full bg-[#1f6fff] px-3 py-2 text-xs font-black text-white shadow-lg">
         <span className="flex items-center gap-1">
           <MapPin size={14} />
-          {pinLabel === "M" ? "내 위치" : "수거 위치"}
+          {pinLabel === "M" ? "현재 위치" : "수거 위치"}
         </span>
       </div>
     </div>
@@ -723,7 +723,7 @@ function ManualAddressEditor({
       />
       <input
         className="mt-3 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-ink outline-none focus:border-lgred"
-        placeholder="상세 위치를 입력해 주세요"
+        placeholder="상세 위치를 입력해 주세요."
         value={detailAddress}
         onChange={(event) => onDetailAddressChange(event.target.value)}
       />
