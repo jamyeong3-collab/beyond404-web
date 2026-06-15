@@ -6,6 +6,7 @@ import {
   reload,
   sendEmailVerification,
   signInWithEmailAndPassword,
+  signOut,
   updateProfile,
   type User as FirebaseUser,
 } from "firebase/auth";
@@ -374,6 +375,12 @@ export default function HomePage() {
 
 
   const resetDemoLogin = () => {
+    try {
+      void signOut(getClientAuth()).catch(() => undefined);
+    } catch {
+      // Firebase 설정이 없는 개발 환경에서도 앱 로그아웃은 계속 진행합니다.
+    }
+
     window.localStorage.removeItem("swapit-demo-user");
     setDemoUser(null);
     setMarketOpened(false);
@@ -657,6 +664,7 @@ function DemoLoginScreen({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberLogin, setRememberLogin] = useState(false);
   const [userName, setUserName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [pendingFirebaseUser, setPendingFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -695,10 +703,13 @@ function DemoLoginScreen({
       return "비밀번호는 6자리 이상으로 입력해주세요.";
     }
     if (error.message.includes("auth/invalid-credential") || error.message.includes("auth/user-not-found")) {
-      return "가입 정보가 없습니다. 이메일과 비밀번호를 확인해주세요.";
+      return "이메일 또는 비밀번호가 올바르지 않습니다.";
     }
     if (error.message.includes("auth/wrong-password")) {
       return "비밀번호가 올바르지 않습니다.";
+    }
+    if (error.message.includes("auth/user-disabled")) {
+      return "사용할 수 없는 계정입니다. 다른 계정으로 로그인해주세요.";
     }
     if (error.message.includes("auth/too-many-requests")) {
       return "로그인 시도가 많습니다. 잠시 후 다시 시도해주세요.";
@@ -1097,7 +1108,7 @@ function ThinQHomeScreen({
 
       <div className="phone-scroll min-h-0 flex-1 space-y-3 overflow-y-auto pb-3">
         <section className="px-1 pb-1 pt-2">
-          <p className="text-[15px] font-bold text-slate-500">반가워요, {demoUser.userName} 님!</p>
+          <p className="text-[15px] font-bold text-slate-500">{demoUser.userName}님, 안녕하세요</p>
           <h1 className="mt-1 whitespace-nowrap text-[17px] font-black leading-tight text-ink sm:text-[18px]">
             오늘도 우리 집은 안심 맑음 상태입니다.
           </h1>
