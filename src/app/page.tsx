@@ -34,7 +34,7 @@ import {
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { BookingPanel } from "@/features/booking/BookingPanel";
-import type { BookingSelection } from "@/features/booking/BookingPanel";
+import type { BookingPurpose, BookingSelection } from "@/features/booking/BookingPanel";
 import { OngoingReservationPanel } from "@/features/booking/OngoingReservationPanel";
 import { ReservationCompletePanel } from "@/features/booking/ReservationCompletePanel";
 import { CapturePanel } from "@/features/capture/CapturePanel";
@@ -78,6 +78,19 @@ type HomeSwapStatus =
   | "reviewCompleted"
   | "reReviewPending"
   | "reReviewCompleted";
+
+const previewSwapSteps: SwapStep[] = [
+  "intro",
+  "capture",
+  "analyzing",
+  "valuation",
+  "market",
+  "booking",
+  "reservationComplete",
+  "ongoing",
+  "tracking",
+  "credit",
+];
 
 const applianceOptions = [
   { id: "washing_machine", label: "세탁기", icon: WashingMachine },
@@ -128,6 +141,167 @@ const marketProducts = [
   },
 ] as const;
 
+function createPreviewSwapRequest(): SwapRequest {
+  const now = new Date().toISOString();
+
+  return {
+    id: -404,
+    customerId: 1,
+    status: "REWARD_READY",
+    appliance: {
+      applianceType: "washing_machine",
+      brand: "LG",
+      modelName: "TROMM AI DD",
+      estimatedAge: "3년",
+      exteriorCondition: "생활 스크래치",
+      conditionGrade: "B",
+      aiAnalysisStatus: "COMPLETED",
+      aiConfidence: 91,
+      uploadedFileName: "preview-washer.jpg",
+      sizeGrade: "중형",
+      sizeMetric: "11kg",
+    },
+    userConsent: {
+      agreedToCreditPolicy: true,
+      notice: "개발 중 화면 확인용 샘플 데이터예요.",
+      agreedAt: now,
+    },
+    captureEvidence: {
+      exteriorPhotoFileName: "preview-washer-front.jpg",
+      labelPhotoFileName: "preview-washer-label.jpg",
+    },
+    preValuation: {
+      minEstimatedValue: 42000,
+      maxEstimatedValue: 48000,
+      currency: "KRW",
+      basis: ["사진 분석", "제품 상태", "교체 구매 혜택"],
+    },
+    rewardEstimate: {
+      scrapValue: 45000,
+      creditRate: 0.08,
+      creditCapRate: 0.15,
+      estimatedFinalCredit: 117800,
+      exchangeCount: 1,
+      userTier: "STANDARD",
+      basis: ["반납 제품 상태", "선택 제품 가격", "프로모션 혜택"],
+    },
+    selectedProduct: {
+      productId: "washer",
+      productName: "LG 오브제컬렉션 AI 세탁기",
+      productGrade: "프리미엄",
+      productPrice: 1290000,
+      sameDayEligible: true,
+    },
+    booking: {
+      bookingDate: "2026-06-15",
+      bookingTime: "09:00",
+      address: "서울특별시 중구 세종대로 110",
+      detailAddress: "1층 공동현관 앞",
+      pickupLat: 37.5665,
+      pickupLng: 126.978,
+    },
+    pickupRequest: {
+      pickupRequestId: -404,
+      pickupType: "BOOKING",
+      status: "IN_PROGRESS",
+      crewId: 101,
+      crewName: "민지 크루",
+      address: "서울특별시 중구 세종대로 110",
+      scheduledAt: "2026-06-15 09:00",
+      requestedAt: now,
+      nearbyCrews: [],
+    },
+    crewProfile: {
+      name: "민지 크루",
+      photoUrl: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&q=80",
+      rating: 4.9,
+      reviewSummary: ["시간 약속을 잘 지켜요", "수거 진행이 친절해요"],
+    },
+    dispatchInfo: {
+      alertMessage: "근처 수거 크루를 배정했어요.",
+      matchScore: 92,
+      priorityRank: 1,
+      rejectCount: 0,
+      cancelCount: 0,
+      penaltyCount: 0,
+      recommendedReason: "예약 위치와 가장 가까운 크루예요.",
+    },
+    tracking: {
+      message: "크루가 수거 위치로 이동 중이에요.",
+      estimatedArrivalAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      driverLocation: {
+        lat: 37.5628,
+        lng: 126.9826,
+        heading: 84,
+        speed: 22,
+        updatedAt: now,
+      },
+      processingCenter: {
+        label: "서울 서부 e-waste 허브",
+        lat: 37.5481,
+        lng: 126.8914,
+      },
+      phase: "EN_ROUTE_TO_PICKUP",
+      metrics: {
+        crewToPickupMeters: 820,
+        crewToProcessingCenterMeters: 9400,
+        locationLive: true,
+      },
+      nearbyCrews: [],
+      events: [
+        { eventType: "REQUESTED", message: "수거 예약이 접수됐어요.", createdAt: now },
+        { eventType: "ASSIGNED", message: "민지 크루가 배정됐어요.", createdAt: now },
+        { eventType: "EN_ROUTE", message: "크루가 수거 위치로 이동 중이에요.", createdAt: now },
+      ],
+    },
+    finalValuation: {
+      amount: 117800,
+      currency: "KRW",
+      status: "CONFIRMED",
+      reasons: ["상태 양호", "재활용 가능 부품 확인", "교체 구매 혜택 반영"],
+    },
+    credit: {
+      amount: 117800,
+      currency: "KRW",
+      status: "READY",
+    },
+    rewardOverview: {
+      currentCredit: 117800,
+      userTier: "STANDARD",
+      exchangeCount: 1,
+      nextTier: "SILVER",
+      benefits: ["교체 구매 할인", "수거 예약 우선 배정"],
+    },
+    deliveryTracking: {
+      status: "READY",
+      etaMessage: "구매 진행 후 배송 추적이 시작돼요.",
+      updatedAt: now,
+      stages: [
+        { stageKey: "ORDER", label: "주문 접수", completed: true, completedAt: now },
+        { stageKey: "DELIVERY", label: "배송 준비", completed: false },
+      ],
+    },
+    pickupResultReport: {
+      resultType: "NORMAL",
+      summary: "수거 및 기본 검수가 완료됐어요.",
+      details: ["외관 상태 양호", "재활용 가능 자재 확인"],
+    },
+    recyclingReport: {
+      summary: "e-waste 처리 허브로 이동 예정이에요.",
+      steps: ["수거 접수", "크루 배정", "허브 전달", "자원 분류"],
+    },
+    settlement: {
+      baseFee: 25000,
+      distanceFee: 5000,
+      incentive: 3000,
+      penalty: 0,
+      totalAmount: 33000,
+      status: "PENDING",
+    },
+    notifications: [],
+  };
+}
+
 export default function HomePage() {
   const thinQOpened = true;
   const [swapItOpened, setSwapItOpened] = useState(false);
@@ -137,6 +311,7 @@ export default function HomePage() {
   const [selectedAppliance, setSelectedAppliance] = useState<ApplianceId>(applianceOptions[0].id);
   const [fileName, setFileName] = useState("");
   const [selectedPurchaseProductId, setSelectedPurchaseProductId] = useState<"washer" | "fridge" | "aircon" | null>(null);
+  const [bookingPurpose, setBookingPurpose] = useState<BookingPurpose>("pickup");
   const [swapRequest, setSwapRequest] = useState<SwapRequest | null>(null);
   const [activeReservationRequest, setActiveReservationRequest] = useState<SwapRequest | null>(null);
   const [homeSwapStatus, setHomeSwapStatus] = useState<HomeSwapStatus>("none");
@@ -144,6 +319,7 @@ export default function HomePage() {
   const [reservationAddress, setReservationAddress] = useState("");
   const [demoUser, setDemoUser] = useState<DemoUser | null>(null);
   const [lastCaptureSubmission, setLastCaptureSubmission] = useState<CaptureSubmission | null>(null);
+  const [capturedApplianceImageUrl, setCapturedApplianceImageUrl] = useState("");
 
   function applyRestoredSwapRequest(restored: SwapRequest) {
     setSwapRequest(restored);
@@ -263,9 +439,13 @@ export default function HomePage() {
   const bookingMutation = useMutation({
     mutationFn: async (booking: BookingSelection) => {
       if (!swapRequest) throw new Error("Swap request is required");
+      const bookingSwapRequest =
+        swapRequest.status === "PRE_VALUATION_ACCEPTED"
+          ? swapRequest
+          : await acceptPreValuation(swapRequest.id);
       const data =
         booking.mode === "schedule"
-          ? await confirmBooking(swapRequest.id, {
+          ? await confirmBooking(bookingSwapRequest.id, {
               address: booking.pickupAddress ?? "A-12, New Delhi demo street",
               detailAddress: booking.detailAddress ?? "Demo street",
               pickupLat: booking.pickupLat ?? 28.6197,
@@ -273,7 +453,7 @@ export default function HomePage() {
               bookingDate: booking.bookingDate,
               bookingTime: booking.bookingTime,
             })
-          : await requestInstantCall(swapRequest.id, {
+          : await requestInstantCall(bookingSwapRequest.id, {
               address: booking.pickupAddress ?? "A-12, New Delhi demo street",
               detailAddress: booking.detailAddress ?? "Near LG demo pickup point",
               pickupLat: booking.pickupLat ?? 28.6197,
@@ -347,7 +527,9 @@ export default function HomePage() {
   const resetExchangeFlow = () => {
     setFileName("");
     setLastCaptureSubmission(null);
+    setCapturedApplianceImageUrl("");
     setSelectedPurchaseProductId(null);
+    setBookingPurpose("pickup");
     setSwapRequest(null);
     setSelectedAppliance(applianceOptions[0].id);
     setSwapStep("intro");
@@ -360,9 +542,60 @@ export default function HomePage() {
     setReservationAddress("");
   };
 
+  const openBookingScreen = (purpose: BookingPurpose = "pickup") => {
+    setBookingPurpose(purpose);
+    setSwapStep("booking");
+  };
+
+  const openPurchaseSelectionScreen = () => {
+    setSwapStep("market");
+  };
+
   const openOngoingReservation = () => {
     setSwapStep("ongoing");
     setSwapItOpened(true);
+  };
+
+  const moveToNextSwapScreen = () => {
+    const nextStep = nextSwapStep(swapStep);
+    const previewRequest = createPreviewSwapRequest();
+    const needsRequest = !["intro", "capture", "analyzing"].includes(nextStep);
+    const needsReservation = ["reservationComplete", "ongoing", "tracking", "credit"].includes(nextStep);
+
+    setShowSplash(false);
+    setMarketOpened(false);
+    setSwapItOpened(true);
+    setFileName((current) => current || "preview-washer-front.jpg");
+
+    if (needsRequest) {
+      setSwapRequest(previewRequest);
+    }
+
+    if (nextStep === "market" && !selectedPurchaseProductId) {
+      setSelectedPurchaseProductId("washer");
+    }
+
+    if (nextStep === "booking") {
+      setBookingPurpose(swapStep === "market" ? "installation" : "pickup");
+    }
+
+    if (needsReservation) {
+      const reservationDate = previewRequest.booking?.bookingDate ?? "2026-06-15";
+      const reservationTime = previewRequest.booking?.bookingTime ?? "09:00";
+      setActiveReservationRequest(previewRequest);
+      setReservationLabel(`${reservationDate} ${reservationTime}`);
+      setReservationAddress(previewRequest.booking?.address ?? "서울특별시 중구 세종대로 110");
+    }
+
+    if (nextStep === "tracking") {
+      setHomeSwapStatus("pickup");
+    } else if (nextStep === "credit") {
+      setHomeSwapStatus("reviewCompleted");
+    } else if (nextStep === "reservationComplete" || nextStep === "ongoing") {
+      setHomeSwapStatus("reserved");
+    }
+
+    setSwapStep(nextStep);
   };
 
   const screenSwapRequest =
@@ -385,6 +618,16 @@ export default function HomePage() {
 
   const isSwapIntroScreen = swapItOpened && swapStep === "intro";
   const isSwapCaptureScreen = Boolean(demoUser) && swapItOpened && swapStep === "capture" && !marketOpened;
+  const phoneViewportBackgroundClass =
+    showSplash || !thinQOpened
+      ? "bg-[#dfeec1]"
+      : !demoUser
+        ? "bg-white"
+        : isSwapIntroScreen
+          ? "swapit-pattern-bg"
+          : isSwapCaptureScreen
+            ? "bg-[#111318]"
+            : "bg-cloud";
 
   return (
     <main className="min-h-screen bg-cloud md:flex md:items-center md:justify-center md:bg-[#202124] md:px-3 md:py-8">
@@ -392,19 +635,23 @@ export default function HomePage() {
         <div className="pointer-events-none absolute left-1/2 top-[22px] z-20 hidden h-9 w-[126px] -translate-x-1/2 items-center justify-end rounded-full bg-black pr-3 md:flex">
           <Camera size={13} className="text-slate-700" />
         </div>
-        <div className="h-[100dvh] overflow-hidden rounded-none bg-cloud md:aspect-[402/874] md:h-auto md:rounded-[43px]">
-          {showSplash ? (
-            <ThinQSplashScreen />
-          ) : thinQOpened ? (
-            <div
-              className={`relative flex h-full animate-[fadeIn_.18s_ease-out] flex-col ${
-                isSwapIntroScreen
-                  ? "swapit-pattern-bg"
-                  : isSwapCaptureScreen
-                    ? "bg-[#111318]"
-                    : "bg-cloud"
-              }`}
-            >
+        <div
+          id="swapit-phone-viewport"
+          className={`phone-safe-viewport relative flex h-[100dvh] flex-col overflow-hidden rounded-none md:aspect-[402/874] md:h-auto md:rounded-[43px] ${phoneViewportBackgroundClass}`}
+        >
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {showSplash ? (
+              <ThinQSplashScreen />
+            ) : thinQOpened ? (
+              <div
+                className={`relative flex h-full animate-[fadeIn_.18s_ease-out] flex-col ${
+                  isSwapIntroScreen
+                    ? "swapit-pattern-bg"
+                    : isSwapCaptureScreen
+                      ? "bg-[#111318]"
+                      : "bg-cloud"
+                }`}
+              >
               {isSwapIntroScreen ? (
                 <IndianPatternOverlay className="z-0" />
               ) : null}
@@ -429,6 +676,7 @@ export default function HomePage() {
                   error={error}
                   analyzeError={analyzeMutation.error}
                   fileName={fileName}
+                  capturedImageUrl={capturedApplianceImageUrl}
                   isBusy={isBusy}
                   homeSwapStatus={homeSwapStatus}
                   reservationLabel={reservationLabel}
@@ -466,6 +714,7 @@ export default function HomePage() {
                   onAnalyze={(submission) => {
                     setLastCaptureSubmission(submission);
                     setFileName(submission.exteriorPhotoFileName);
+                    setCapturedApplianceImageUrl(submission.exteriorPhotoUrl ?? "");
                     analyzeMutation.reset();
                     setSwapStep("analyzing");
                     analyzeMutation.mutate(submission);
@@ -479,8 +728,10 @@ export default function HomePage() {
                     setSwapStep("analyzing");
                     analyzeMutation.mutate(lastCaptureSubmission);
                   }}
-                  onValuationNext={() => acceptValuationMutation.mutate("booking")}
-                  onOpenPurchaseFlow={() => acceptValuationMutation.mutate("market")}
+                  bookingPurpose={bookingPurpose}
+                  onValuationNext={() => openBookingScreen("pickup")}
+                  onOpenInstallationBooking={() => openBookingScreen("installation")}
+                  onOpenPurchaseFlow={openPurchaseSelectionScreen}
                   selectedPurchaseProductId={selectedPurchaseProductId}
                   onSelectPurchaseProduct={setSelectedPurchaseProductId}
                   onBooking={(booking) => bookingMutation.mutate(booking)}
@@ -511,6 +762,7 @@ export default function HomePage() {
                     setSwapStep("tracking");
                   }}
                   onOpenCredit={() => setSwapStep("credit")}
+                  onNextScreen={moveToNextSwapScreen}
                 />
               ) : (
                 <ThinQHomeScreen
@@ -539,10 +791,11 @@ export default function HomePage() {
                   onLogout={resetDemoLogin}
                 />
               )}
-            </div>
-          ) : (
-            <ThinQSplashScreen />
-          )}
+              </div>
+            ) : (
+              <ThinQSplashScreen />
+            )}
+          </div>
         </div>
       </section>
     </main>
@@ -600,6 +853,15 @@ function previousStep(step: SwapStep): SwapStep {
     default:
       return "intro";
   }
+}
+
+function nextSwapStep(step: SwapStep): SwapStep {
+  const currentIndex = previewSwapSteps.indexOf(step);
+  if (currentIndex < 0) {
+    return "intro";
+  }
+
+  return previewSwapSteps[(currentIndex + 1) % previewSwapSteps.length];
 }
 
 function PhoneStatusBar({ isDark }: { isDark: boolean }) {
@@ -1311,19 +1573,19 @@ function getHomeStatusCard(status: HomeSwapStatus, reservationLabel: string) {
       return {
         icon: CalendarCheck,
         title: "수거 예약이 완료됐어요",
-        description: (reservationLabel || "예약 시간") + "에 맞춰 수거가 진행됩니다.",
+        description: (reservationLabel || "예약 시간") + "에 맞춰 수거가 진행돼요.",
       };
     case "pickup":
       return {
         icon: Truck,
         title: "수거가 진행 중이에요",
-        description: "배정된 수거 크루가 방문을 준비하고 있습니다.",
+        description: "배정된 수거 크루가 방문을 준비하고 있어요.",
       };
     case "reviewPending":
       return {
         icon: ClipboardCheck,
         title: "최종 확인 중",
-        description: "수거물 확인과 허브 인수 절차가 완료되면 ThinQ 알림으로 안내해 드립니다.",
+        description: "수거물 확인과 허브 인수 절차가 완료되면 ThinQ 알림으로 안내해 드려요.",
       };
     case "reviewCompleted":
       return {
@@ -1335,7 +1597,7 @@ function getHomeStatusCard(status: HomeSwapStatus, reservationLabel: string) {
       return {
         icon: Clock,
         title: "재검토 중",
-        description: "요청하신 내용을 기준으로 다시 확인하고 있습니다.",
+        description: "요청하신 내용을 기준으로 다시 확인하고 있어요.",
       };
     case "reReviewCompleted":
       return {
@@ -1356,6 +1618,7 @@ function SwapItFeatureScreen(props: {
   error: unknown;
   analyzeError: unknown;
   fileName: string;
+  capturedImageUrl: string;
   isBusy: boolean;
   homeSwapStatus: HomeSwapStatus;
   reservationLabel: string;
@@ -1365,6 +1628,7 @@ function SwapItFeatureScreen(props: {
   swapRequest: SwapRequest | null;
   analyzeLoading: boolean;
   bookingLoading: boolean;
+  bookingPurpose: BookingPurpose;
   creditLoading: boolean;
   onBack: () => void;
   onClose: () => void;
@@ -1375,6 +1639,7 @@ function SwapItFeatureScreen(props: {
   onAnalyze: (submission: CaptureSubmission) => void;
   onRetryAnalysis: () => void;
   onValuationNext: () => void;
+  onOpenInstallationBooking: () => void;
   onOpenPurchaseFlow: () => void;
   selectedPurchaseProductId: "washer" | "fridge" | "aircon" | null;
   onSelectPurchaseProduct: (productId: "washer" | "fridge" | "aircon" | null) => void;
@@ -1390,6 +1655,7 @@ function SwapItFeatureScreen(props: {
   onViewReservation: () => void;
   onOpenTracking: () => void;
   onOpenCredit: () => void;
+  onNextScreen: () => void;
 }) {
   const selectedLabel =
     applianceOptions.find((option) => option.id === props.selectedAppliance)?.label ?? "가전";
@@ -1401,6 +1667,16 @@ function SwapItFeatureScreen(props: {
         props.step === "intro" ? "overflow-hidden" : ""
       }`}
     >
+      {!showFeatureHeader ? (
+        <button
+          className="absolute right-4 top-4 z-40 rounded-full bg-white/95 px-4 py-2 text-xs font-bold text-lgred shadow-sm ring-1 ring-lgred/10"
+          onClick={props.onNextScreen}
+          type="button"
+        >
+          다음 화면
+        </button>
+      ) : null}
+
       {showFeatureHeader ? (
         <header className="relative z-20 px-4 pb-3">
           <div className="mb-3 flex items-center justify-between">
@@ -1412,6 +1688,13 @@ function SwapItFeatureScreen(props: {
               onClick={props.onBack}
             >
               <ArrowLeft size={18} />
+            </button>
+            <button
+              className="h-9 rounded-full bg-white/95 px-4 text-xs font-bold text-lgred shadow-sm ring-1 ring-lgred/10"
+              onClick={props.onNextScreen}
+              type="button"
+            >
+              다음 화면
             </button>
             <button
               className={`h-9 rounded-full bg-white/95 px-3 text-xs font-bold text-lgred shadow-sm disabled:text-slate-400 ${
@@ -1430,7 +1713,7 @@ function SwapItFeatureScreen(props: {
             <ThreeStepProgress step={props.step} />
           ) : null}
           {(props.step === "ongoing" || props.step === "tracking" || props.step === "credit") ? (
-            <OngoingReservationHeader step={props.step} />
+            <OngoingReservationHeader bookingPurpose={props.bookingPurpose} step={props.step} />
           ) : null}
         </header>
       ) : null}
@@ -1471,6 +1754,7 @@ function SwapItFeatureScreen(props: {
         ) : null}
         {props.step === "valuation" ? (
           <PreValuationPanel
+            capturedImageUrl={props.capturedImageUrl}
             loading={props.isBusy}
             onNext={props.onValuationNext}
             onOpenPurchase={props.onOpenPurchaseFlow}
@@ -1482,11 +1766,12 @@ function SwapItFeatureScreen(props: {
             estimatedCredit={Math.round(((props.swapRequest?.preValuation.minEstimatedValue ?? 0) + (props.swapRequest?.preValuation.maxEstimatedValue ?? 0)) / 2)}
             selectedProductId={props.selectedPurchaseProductId}
             onSelectProduct={(productId) => props.onSelectPurchaseProduct(productId)}
-            onContinueToBooking={props.onValuationNext}
+            onContinueToBooking={props.onOpenInstallationBooking}
           />
         ) : null}
         {props.step === "booking" ? (
           <BookingPanel
+            bookingPurpose={props.bookingPurpose}
             swapRequest={props.swapRequest}
             loading={props.bookingLoading}
             onBooking={props.onBooking}
@@ -1494,6 +1779,7 @@ function SwapItFeatureScreen(props: {
         ) : null}
         {props.step === "reservationComplete" ? (
           <ReservationCompletePanel
+            bookingPurpose={props.bookingPurpose}
             reservationAddress={props.reservationAddress}
             reservationLabel={props.reservationLabel}
             onClose={props.onCloseReservationComplete}
@@ -1502,6 +1788,7 @@ function SwapItFeatureScreen(props: {
         ) : null}
         {props.step === "ongoing" ? (
           <OngoingReservationPanel
+            bookingPurpose={props.bookingPurpose}
             reservationLabel={props.reservationLabel}
             reservationAddress={props.reservationAddress}
             status={props.homeSwapStatus}
@@ -1555,14 +1842,14 @@ function StepProgress({ step }: { step: SwapStep }) {
             <div key={item.id} className="flex flex-1 items-center last:flex-none">
               <div className="flex shrink-0 flex-col items-center gap-1">
                 <div
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-black transition-colors ${
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
                     active || done ? "bg-lgred text-white" : "bg-[#e8e8f1] text-slate-400"
                   }`}
                 >
                   {item.id}
                 </div>
                 <span
-                  className={`text-[10px] font-black leading-none ${
+                  className={`text-[10px] font-semibold leading-none ${
                     active || done ? "text-lgred" : "text-slate-400"
                   }`}
                 >
@@ -1603,14 +1890,14 @@ function ThreeStepProgress({ step }: { step: SwapStep }) {
             <div key={item.id} className="flex flex-1 items-center last:flex-none">
               <div className="flex shrink-0 flex-col items-center gap-1">
                 <div
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-black transition-colors ${
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
                     active || done ? "bg-lgred text-white" : "bg-[#e8e8f1] text-slate-400"
                   }`}
                 >
                   {item.id}
                 </div>
                 <span
-                  className={`text-[10px] font-black leading-none ${
+                  className={`text-[10px] font-semibold leading-none ${
                     active || done ? "text-lgred" : "text-slate-400"
                   }`}
                 >
@@ -1632,21 +1919,40 @@ function ThreeStepProgress({ step }: { step: SwapStep }) {
   );
 }
 
-function OngoingReservationHeader({ step }: { step: "ongoing" | "tracking" | "credit" }) {
+function OngoingReservationHeader({
+  bookingPurpose,
+  step,
+}: {
+  bookingPurpose: BookingPurpose;
+  step: "ongoing" | "tracking" | "credit";
+}) {
+  const isInstallation = bookingPurpose === "installation";
   const title =
-    step === "ongoing" ? "진행 중인 예약" : step === "tracking" ? "진행 중인 예약 · 수거 진행" : "진행 중인 예약 · 보상 단계";
+    step === "ongoing"
+      ? isInstallation
+        ? "진행 중인 설치 예약"
+        : "진행 중인 예약"
+      : step === "tracking"
+        ? isInstallation
+          ? "진행 중인 예약 · 설치와 수거"
+          : "진행 중인 예약 · 수거 진행"
+        : "진행 중인 예약 · 보상 단계";
   const description =
     step === "ongoing"
-      ? "예약 정보 확인, STEP 4 크루 이동 확인, STEP 5 전체 보상 확인으로 이어지는 전용 화면입니다."
+      ? isInstallation
+        ? "설치 예약 정보와 크루 이동 상태를 이어서 확인할 수 있어요."
+        : "예약 정보와 크루 이동 상태를 이어서 확인할 수 있어요."
       : step === "tracking"
-        ? "크루 이동, 수거 진행, GPS 추적을 한 화면에서 확인합니다."
-        : "수거 완료 이후 검수, 최종 보상가, 크레딧 발급 단계를 이어서 확인합니다.";
+        ? isInstallation
+          ? "크루 이동, 새 제품 설치, 기존 제품 수거 진행을 한 화면에서 확인해요."
+          : "크루 이동, 수거 진행, GPS 추적을 한 화면에서 확인해요."
+        : "수거 완료 이후 검수, 최종 보상가, 크레딧 발급 단계를 이어서 확인해요.";
 
   return (
     <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
-      <p className="text-xs font-black text-lgred">ONGOING RESERVATION</p>
-      <p className="mt-1 text-sm font-black text-ink">{title}</p>
-      <p className="mt-1 text-[11px] font-semibold leading-5 text-slate-500">{description}</p>
+      <p className="text-xs font-bold text-lgred">ONGOING RESERVATION</p>
+      <p className="mt-1 text-[13px] font-bold text-ink">{title}</p>
+      <p className="mt-1 text-[10px] font-medium leading-4 text-slate-500">{description}</p>
     </div>
   );
 }
@@ -1664,7 +1970,7 @@ function getContentClassName(step: SwapStep) {
     return "relative z-10 flex-1 overflow-hidden px-4 pb-4";
   }
 
-  return "phone-scroll relative z-10 flex-1 overflow-y-auto px-4 pb-5";
+  return "phone-scroll relative z-10 flex-1 overflow-y-auto px-4 pb-4";
 }
 
 function getProgressStep(step: SwapStep) {

@@ -19,7 +19,9 @@ type CaptureTarget = "exterior" | "label";
 
 export type CaptureSubmission = {
   exteriorPhotoFileName: string;
+  exteriorPhotoUrl?: string;
   labelPhotoFileName: string;
+  labelPhotoUrl?: string;
   agreedToCreditPolicy: boolean;
   applianceType: ApplianceId;
   brand: string;
@@ -680,7 +682,9 @@ export function CapturePanel({
         onAnalyze={() =>
           onAnalyze({
             exteriorPhotoFileName,
+            exteriorPhotoUrl: exteriorPreviewUrl,
             labelPhotoFileName,
+            labelPhotoUrl: labelPreviewUrl,
             agreedToCreditPolicy: creditPolicyAgreed && truthfulnessAgreed,
             applianceType: applianceId,
             brand: recognizedInfo.brand,

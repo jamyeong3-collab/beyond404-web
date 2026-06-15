@@ -138,11 +138,11 @@ function subtitleFor(status: PickupTrackingStatus) {
     case "en_route_pickup":
       return "실시간 위치가 들어오면 지도에서 크루 이동 경로를 따라갈 수 있어요.";
     case "arrived":
-      return "문앞 도착 이후 현장 확인과 수거가 진행됩니다.";
+      return "문앞 도착 이후 현장 확인과 수거가 진행돼요.";
     case "en_route_hub":
-      return "수거 완료 후 처리 허브까지의 이동이 계속 업데이트됩니다.";
+      return "수거 완료 후 처리 허브까지의 이동이 계속 업데이트돼요.";
     case "delivered_to_hub":
-      return "안심 처리 완료 상태입니다. 다음 단계로 넘어갈 수 있어요.";
+      return "안심 처리가 완료된 상태예요. 다음 단계로 넘어갈 수 있어요.";
     default:
       return "매칭 점수가 높은 크루에게 우선적으로 배차 알림을 보내고 있어요.";
   }
@@ -227,7 +227,7 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
   }, []);
 
   useEffect(() => {
-    if (!swapRequest?.id) {
+    if (!swapRequest?.id || swapRequest.id < 0) {
       return undefined;
     }
 
@@ -262,8 +262,8 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
   if (!liveRequest || !viewModel) {
     return (
       <section className="rounded-[28px] bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-black text-ink">수거 추적 정보가 아직 준비되지 않았어요</h2>
-        <p className="mt-2 text-sm font-semibold text-slate-500">
+        <h2 className="text-[15px] font-bold leading-5 text-ink">수거 추적 정보가 아직 준비되지 않았어요</h2>
+        <p className="mt-2 text-[13px] font-medium leading-5 text-slate-500">
           수거 요청이 접수되면 이 화면에서 크루 배정과 이동 상태를 바로 확인할 수 있어요.
         </p>
       </section>
@@ -278,24 +278,24 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
 
   return (
     <section className="overflow-hidden rounded-[28px] bg-white shadow-sm">
-      <div className="bg-[linear-gradient(135deg,#fff5f8,#ffffff_55%,#f8fafc)] p-5">
+      <div className="bg-[linear-gradient(135deg,#fff5f8,#ffffff_55%,#f8fafc)] p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <span className="inline-flex rounded-full bg-lgred/10 px-3 py-1 text-xs font-black text-lgred">
+            <span className="inline-flex rounded-full bg-lgred/10 px-3 py-1 text-xs font-bold text-lgred">
               이동 중인 크루 확인
             </span>
-            <h2 className="mt-4 text-[2rem] font-black leading-tight text-ink">{viewModel.title}</h2>
-            <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">{viewModel.subtitle}</p>
+            <h2 className="mt-4 text-[20px] font-bold leading-6 text-ink">{viewModel.title}</h2>
+            <p className="mt-2 text-[13px] font-medium leading-5 text-slate-500">{viewModel.subtitle}</p>
           </div>
           <div className="rounded-2xl bg-[#202632] px-4 py-3 text-right text-white">
-            <p className="text-xs font-black text-white/60">현재 시간</p>
-            <p className="mt-1 text-lg font-black">{now}</p>
-            <p className="mt-1 text-xs font-bold text-white/70">{viewModel.etaLabel}</p>
+            <p className="text-xs font-semibold text-white/60">현재 시간</p>
+            <p className="mt-1 text-[15px] font-bold leading-5">{now}</p>
+            <p className="mt-1 text-xs font-medium text-white/70">{viewModel.etaLabel}</p>
           </div>
         </div>
       </div>
 
-      <div className="px-5 pb-5">
+      <div className="px-4 pb-4">
         <div className="-mt-2 rounded-[26px] border border-[#f1d7df] bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -311,9 +311,9 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
                 </span>
               )}
               <div>
-                <p className="text-xs font-black text-lgred">배정 크루</p>
-                <p className="text-lg font-black text-ink">{viewModel.crewProfile?.name ?? "배정 대기 중"}</p>
-                <div className="mt-1 flex items-center gap-1 text-xs font-bold text-slate-500">
+                <p className="text-xs font-bold text-lgred">배정 크루</p>
+                <p className="text-[15px] font-bold leading-5 text-ink">{viewModel.crewProfile?.name ?? "배정 대기 중"}</p>
+                <div className="mt-1 flex items-center gap-1 text-xs font-medium text-slate-500">
                   <Star size={12} className="fill-current text-[#ffb800]" />
                   {viewModel.crewProfile ? viewModel.crewProfile.rating.toFixed(1) : "-"}
                 </div>
@@ -321,7 +321,7 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
             </div>
             {viewModel.crewProfile ? (
               <a
-                className="flex h-11 items-center gap-2 rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-700"
+                className="flex h-11 items-center gap-2 rounded-2xl bg-slate-100 px-4 text-[13px] font-bold text-slate-700"
                 href={`tel:${viewModel.crewProfile.phone}`}
               >
                 <Phone size={16} />
@@ -333,7 +333,7 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
           {viewModel.crewProfile?.reviewSummary?.length ? (
             <div className="mt-4 rounded-2xl bg-[#fff7f9] px-4 py-3">
               {viewModel.crewProfile.reviewSummary.slice(0, 2).map((review, index) => (
-                <p key={`${review}-${index}`} className="text-sm font-semibold leading-6 text-slate-600">
+                <p key={`${review}-${index}`} className="text-[13px] font-semibold leading-5 text-slate-600">
                   {review}
                 </p>
               ))}
@@ -375,8 +375,8 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
           </div>
         </div>
 
-        <div className="mt-4 rounded-[26px] border border-slate-200 bg-white p-5">
-          <div className="flex items-center gap-2 text-sm font-black text-ink">
+        <div className="mt-4 rounded-[26px] border border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-2 text-[13px] font-bold text-ink">
             <ShieldCheck size={16} className="text-lgred" />
             수거 진행 상태
           </div>
@@ -399,10 +399,10 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
                   </div>
                   <div className="flex-1 pb-2">
                     <div className="flex items-start justify-between gap-3">
-                      <p className={`text-base font-black ${active ? "text-ink" : "text-slate-400"}`}>{step.label}</p>
-                      <span className="text-sm font-bold text-slate-400">{formatDateTime(event?.createdAt ?? null)}</span>
+                      <p className={`text-[14px] leading-5 ${active ? "font-bold text-ink" : "font-semibold text-slate-400"}`}>{step.label}</p>
+                      <span className="text-xs font-medium text-slate-400">{formatDateTime(event?.createdAt ?? null)}</span>
                     </div>
-                    <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                    <p className="mt-1 text-[13px] font-medium leading-5 text-slate-500">
                       {event?.message ?? defaultEventMessage(step.key)}
                     </p>
                   </div>
@@ -417,7 +417,7 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
 
           {viewModel.status === "delivered_to_hub" ? (
             <button
-              className="mt-4 h-12 w-full rounded-2xl bg-lgred text-sm font-black text-white"
+              className="mt-4 h-12 w-full rounded-2xl bg-lgred text-[13px] font-bold text-white"
               onClick={onNext}
               type="button"
             >
@@ -428,7 +428,7 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
 
         {nextDestination ? null : (
           <p className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold text-slate-500">
-            지도 표시를 위해 수거지 좌표가 필요합니다.
+            지도 표시를 위해 수거지 좌표가 필요해요.
           </p>
         )}
       </div>
@@ -463,14 +463,14 @@ function TrackingMap({
   const path = crewLocation ? [crewLocation, routeTarget] : [];
 
   return (
-    <div className="mt-5 overflow-hidden rounded-[24px] border border-slate-200 bg-slate-100">
+    <div className="mt-4 overflow-hidden rounded-[24px] border border-slate-200 bg-slate-100">
       <LeafletTrackingMap
         center={crewLocation ?? routeTarget}
         className="h-[320px] w-full"
         markers={markers}
         path={path}
       />
-      <div className="grid grid-cols-1 gap-2 border-t border-slate-200 bg-white p-3 text-xs font-bold text-slate-500 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 border-t border-slate-200 bg-white p-3 text-xs font-medium text-slate-500 sm:grid-cols-3">
         <MapLegend colorClass="bg-[#2563eb]" label="수거 위치" />
         <MapLegend colorClass="bg-[#dc2626]" label="크루 현재 위치" />
         <MapLegend colorClass="bg-[#16a34a]" label="처리 허브" />
@@ -501,12 +501,12 @@ function InfoCard({
 }) {
   return (
     <div className="rounded-2xl bg-slate-50 p-4">
-      <div className="flex items-center gap-2 text-xs font-black text-lgred">
+      <div className="flex items-center gap-2 text-xs font-bold text-lgred">
         {icon}
         {title}
       </div>
-      <p className="mt-2 text-sm font-black leading-6 text-ink">{value}</p>
-      <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">{caption}</p>
+      <p className="mt-2 text-[13px] font-bold leading-5 text-ink">{value}</p>
+      <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{caption}</p>
     </div>
   );
 }
@@ -514,14 +514,14 @@ function InfoCard({
 function defaultEventMessage(stepKey: (typeof progressSteps)[number]["key"]) {
   switch (stepKey) {
     case "REQUESTED":
-      return "예약 또는 바로콜 요청이 접수된 상태입니다.";
+      return "예약 또는 바로콜 요청이 접수된 상태예요.";
     case "ASSIGNED":
-      return "매칭 점수가 높은 크루가 배정됩니다.";
+      return "매칭 점수가 높은 크루가 배정돼요.";
     case "EN_ROUTE":
-      return "크루 위치가 실시간으로 갱신됩니다.";
+      return "크루 위치가 실시간으로 갱신돼요.";
     case "ARRIVED":
-      return "문앞 도착 후 실물 확인과 수거가 진행됩니다.";
+      return "문앞 도착 후 실물 확인과 수거가 진행돼요.";
     case "HUB_DONE":
-      return "e-waste 공장 전달 완료 시 안심처리 완료 알림이 표시됩니다.";
+      return "e-waste 공장 전달 완료 시 안심처리 완료 알림이 표시돼요.";
   }
 }

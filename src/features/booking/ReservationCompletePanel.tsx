@@ -1,6 +1,8 @@
 import { CalendarCheck, CheckCircle2, MapPin } from "lucide-react";
+import type { BookingPurpose } from "./BookingPanel";
 
 type ReservationCompletePanelProps = {
+  bookingPurpose?: BookingPurpose;
   reservationAddress: string;
   reservationLabel: string;
   onClose: () => void;
@@ -8,27 +10,41 @@ type ReservationCompletePanelProps = {
 };
 
 export function ReservationCompletePanel({
+  bookingPurpose = "pickup",
   reservationAddress,
   reservationLabel,
   onClose,
   onViewReservation,
 }: ReservationCompletePanelProps) {
+  const copy =
+    bookingPurpose === "installation"
+      ? {
+          confirmedLabel: "설치 예약이 확정됐어요",
+          description: "예약된 시간에 새 제품 설치와 기존 제품 수거를 함께 진행해요.",
+          locationTitle: "설치 위치예요",
+          locationFallback: "입력한 설치 주소를 불러오고 있어요.",
+        }
+      : {
+          confirmedLabel: "수거 예약이 확정됐어요",
+          description: "예약된 시간에 기존 제품 수거가 진행돼요.",
+          locationTitle: "수거 위치예요",
+          locationFallback: "입력한 수거 주소를 불러오고 있어요.",
+        };
+
   return (
-    <section className="flex h-full flex-col rounded-[28px] bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-2 text-sm font-black text-lgred">
+    <section className="flex h-full flex-col rounded-[28px] bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-2 text-[13px] font-bold text-lgred">
         <CalendarCheck size={18} />
-        예약 완료
+        예약이 완료됐어요
       </div>
 
-      <div className="mt-5 rounded-3xl border border-lgred/15 bg-lgred/5 p-5 text-center">
+      <div className="mt-4 rounded-3xl border border-lgred/15 bg-lgred/5 p-4 text-center">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-lgred text-white">
           <CheckCircle2 size={30} />
         </div>
-        <p className="mt-4 text-xs font-black text-lgred">수거 예약이 확정되었습니다</p>
-        <h2 className="mt-2 text-2xl font-black text-ink">{reservationLabel || "예약 정보 확인 중"}</h2>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          지금은 닫기로 돌아가거나, 예약 확인하기를 눌러 진행 중인 예약 화면으로 이동할 수 있습니다.
-        </p>
+        <p className="mt-4 text-xs font-bold text-lgred">{copy.confirmedLabel}</p>
+        <h2 className="mt-2 text-[18px] font-bold leading-6 text-ink">{reservationLabel || "예약 정보를 확인하고 있어요"}</h2>
+        <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{copy.description}</p>
       </div>
 
       <div className="mt-4 rounded-2xl bg-slate-50 p-4">
@@ -37,9 +53,9 @@ export function ReservationCompletePanel({
             <MapPin size={18} />
           </span>
           <div>
-            <p className="text-sm font-black text-ink">수거 위치</p>
+            <p className="text-[13px] font-bold text-ink">{copy.locationTitle}</p>
             <p className="mt-1 text-xs font-semibold text-slate-500">
-              {reservationAddress || "입력한 주소를 불러오는 중입니다."}
+              {reservationAddress || copy.locationFallback}
             </p>
           </div>
         </div>
@@ -47,18 +63,18 @@ export function ReservationCompletePanel({
 
       <div className="mt-auto grid grid-cols-2 gap-2">
         <button
-          className="h-12 rounded-xl border border-lgred/20 bg-white text-sm font-black text-lgred"
+          className="h-12 rounded-xl border border-lgred/20 bg-white text-[13px] font-bold text-lgred"
           onClick={onClose}
           type="button"
         >
-          닫기
+          닫을게요
         </button>
         <button
-          className="h-12 rounded-xl bg-lgred text-sm font-black text-white"
+          className="h-12 rounded-xl bg-lgred text-[13px] font-bold text-white"
           onClick={onViewReservation}
           type="button"
         >
-          예약 확인하기
+          예약을 확인할게요
         </button>
       </div>
     </section>
