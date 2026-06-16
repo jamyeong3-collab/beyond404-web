@@ -11,7 +11,7 @@ const config: Config = {
       colors: {
         ink: "#111827",
         violet: "#E95D6A",
-        lgred: "#E95D6A",
+        lgred: "#A50034",
         lgpink: "#F58A96",
         lgdark: "#C84B58",
         mint: "#20b486",

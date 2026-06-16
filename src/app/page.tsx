@@ -11,10 +11,11 @@ import {
   type User as FirebaseUser,
 } from "firebase/auth";
 import {
+  AirVent,
   ArrowLeft,
   Bell,
   CalendarCheck,
-  Camera,
+  Check,
   ChevronRight,
   CheckCircle2,
   ClipboardCheck,
@@ -22,6 +23,7 @@ import {
   CreditCard,
   Home,
   Microwave,
+  Plus,
   Recycle,
   Refrigerator,
   ShoppingBag,
@@ -34,7 +36,7 @@ import {
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { BookingPanel } from "@/features/booking/BookingPanel";
-import type { BookingSelection } from "@/features/booking/BookingPanel";
+import type { BookingPurpose, BookingSelection } from "@/features/booking/BookingPanel";
 import { OngoingReservationPanel } from "@/features/booking/OngoingReservationPanel";
 import { ReservationCompletePanel } from "@/features/booking/ReservationCompletePanel";
 import { CapturePanel } from "@/features/capture/CapturePanel";
@@ -58,6 +60,7 @@ import {
 } from "@/lib/api";
 import { getClientAuth, isFirebaseAuthConfigured } from "@/lib/firebase";
 import type { SwapRequest } from "@/types/swap";
+import { Appliance3DIcon } from "@/components/Appliance3DIcon";
 
 type SwapStep =
   | "intro"
@@ -79,12 +82,26 @@ type HomeSwapStatus =
   | "reReviewPending"
   | "reReviewCompleted";
 
+const previewSwapSteps: SwapStep[] = [
+  "intro",
+  "capture",
+  "analyzing",
+  "valuation",
+  "market",
+  "booking",
+  "reservationComplete",
+  "ongoing",
+  "tracking",
+  "credit",
+];
+
 const applianceOptions = [
   { id: "washing_machine", label: "세탁기", icon: WashingMachine },
   { id: "refrigerator", label: "냉장고", icon: Refrigerator },
   { id: "air_conditioner", label: "에어컨", icon: Wind },
   { id: "microwave", label: "전자레인지", icon: Microwave },
   { id: "tv", label: "TV", icon: Tv },
+  { id: "air_purifier", label: "공기청정기", icon: AirVent },
 ] as const;
 
 type ApplianceId = (typeof applianceOptions)[number]["id"];
@@ -128,6 +145,167 @@ const marketProducts = [
   },
 ] as const;
 
+function createPreviewSwapRequest(): SwapRequest {
+  const now = new Date().toISOString();
+
+  return {
+    id: -404,
+    customerId: 1,
+    status: "REWARD_READY",
+    appliance: {
+      applianceType: "washing_machine",
+      brand: "LG",
+      modelName: "TROMM AI DD",
+      estimatedAge: "3년",
+      exteriorCondition: "생활 스크래치",
+      conditionGrade: "B",
+      aiAnalysisStatus: "COMPLETED",
+      aiConfidence: 91,
+      uploadedFileName: "preview-washer.jpg",
+      sizeGrade: "중형",
+      sizeMetric: "11kg",
+    },
+    userConsent: {
+      agreedToCreditPolicy: true,
+      notice: "개발 중 화면 확인용 샘플 데이터예요.",
+      agreedAt: now,
+    },
+    captureEvidence: {
+      exteriorPhotoFileName: "preview-washer-front.jpg",
+      labelPhotoFileName: "preview-washer-label.jpg",
+    },
+    preValuation: {
+      minEstimatedValue: 42000,
+      maxEstimatedValue: 48000,
+      currency: "KRW",
+      basis: ["사진 분석", "제품 상태", "교체 구매 혜택"],
+    },
+    rewardEstimate: {
+      scrapValue: 45000,
+      creditRate: 0.08,
+      creditCapRate: 0.15,
+      estimatedFinalCredit: 117800,
+      exchangeCount: 1,
+      userTier: "STANDARD",
+      basis: ["반납 제품 상태", "선택 제품 가격", "프로모션 혜택"],
+    },
+    selectedProduct: {
+      productId: "washer",
+      productName: "LG 오브제컬렉션 AI 세탁기",
+      productGrade: "프리미엄",
+      productPrice: 1290000,
+      sameDayEligible: true,
+    },
+    booking: {
+      bookingDate: "2026-06-15",
+      bookingTime: "09:00",
+      address: "서울특별시 중구 세종대로 110",
+      detailAddress: "1층 공동현관 앞",
+      pickupLat: 37.5665,
+      pickupLng: 126.978,
+    },
+    pickupRequest: {
+      pickupRequestId: -404,
+      pickupType: "BOOKING",
+      status: "IN_PROGRESS",
+      crewId: 101,
+      crewName: "민지 크루",
+      address: "서울특별시 중구 세종대로 110",
+      scheduledAt: "2026-06-15 09:00",
+      requestedAt: now,
+      nearbyCrews: [],
+    },
+    crewProfile: {
+      name: "민지 크루",
+      photoUrl: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&q=80",
+      rating: 4.9,
+      reviewSummary: ["시간 약속을 잘 지켜요", "수거 진행이 친절해요"],
+    },
+    dispatchInfo: {
+      alertMessage: "근처 수거 크루를 배정했어요.",
+      matchScore: 92,
+      priorityRank: 1,
+      rejectCount: 0,
+      cancelCount: 0,
+      penaltyCount: 0,
+      recommendedReason: "예약 위치와 가장 가까운 크루예요.",
+    },
+    tracking: {
+      message: "크루가 수거 위치로 이동 중이에요.",
+      estimatedArrivalAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      driverLocation: {
+        lat: 37.5628,
+        lng: 126.9826,
+        heading: 84,
+        speed: 22,
+        updatedAt: now,
+      },
+      processingCenter: {
+        label: "서울 서부 e-waste 허브",
+        lat: 37.5481,
+        lng: 126.8914,
+      },
+      phase: "EN_ROUTE_TO_PICKUP",
+      metrics: {
+        crewToPickupMeters: 820,
+        crewToProcessingCenterMeters: 9400,
+        locationLive: true,
+      },
+      nearbyCrews: [],
+      events: [
+        { eventType: "REQUESTED", message: "수거 예약이 접수됐어요.", createdAt: now },
+        { eventType: "ASSIGNED", message: "민지 크루가 배정됐어요.", createdAt: now },
+        { eventType: "EN_ROUTE", message: "크루가 수거 위치로 이동 중이에요.", createdAt: now },
+      ],
+    },
+    finalValuation: {
+      amount: 117800,
+      currency: "KRW",
+      status: "CONFIRMED",
+      reasons: ["상태 양호", "재활용 가능 부품 확인", "교체 구매 혜택 반영"],
+    },
+    credit: {
+      amount: 117800,
+      currency: "KRW",
+      status: "READY",
+    },
+    rewardOverview: {
+      currentCredit: 117800,
+      userTier: "STANDARD",
+      exchangeCount: 1,
+      nextTier: "SILVER",
+      benefits: ["교체 구매 할인", "수거 예약 우선 배정"],
+    },
+    deliveryTracking: {
+      status: "READY",
+      etaMessage: "구매 진행 후 배송 추적이 시작돼요.",
+      updatedAt: now,
+      stages: [
+        { stageKey: "ORDER", label: "주문 접수", completed: true, completedAt: now },
+        { stageKey: "DELIVERY", label: "배송 준비", completed: false },
+      ],
+    },
+    pickupResultReport: {
+      resultType: "NORMAL",
+      summary: "수거 및 기본 검수가 완료됐어요.",
+      details: ["외관 상태 양호", "재활용 가능 자재 확인"],
+    },
+    recyclingReport: {
+      summary: "e-waste 처리 허브로 이동 예정이에요.",
+      steps: ["수거 접수", "크루 배정", "허브 전달", "자원 분류"],
+    },
+    settlement: {
+      baseFee: 25000,
+      distanceFee: 5000,
+      incentive: 3000,
+      penalty: 0,
+      totalAmount: 33000,
+      status: "PENDING",
+    },
+    notifications: [],
+  };
+}
+
 export default function HomePage() {
   const thinQOpened = true;
   const [swapItOpened, setSwapItOpened] = useState(false);
@@ -137,6 +315,7 @@ export default function HomePage() {
   const [selectedAppliance, setSelectedAppliance] = useState<ApplianceId>(applianceOptions[0].id);
   const [fileName, setFileName] = useState("");
   const [selectedPurchaseProductId, setSelectedPurchaseProductId] = useState<"washer" | "fridge" | "aircon" | null>(null);
+  const [bookingPurpose, setBookingPurpose] = useState<BookingPurpose>("pickup");
   const [swapRequest, setSwapRequest] = useState<SwapRequest | null>(null);
   const [activeReservationRequest, setActiveReservationRequest] = useState<SwapRequest | null>(null);
   const [homeSwapStatus, setHomeSwapStatus] = useState<HomeSwapStatus>("none");
@@ -144,6 +323,7 @@ export default function HomePage() {
   const [reservationAddress, setReservationAddress] = useState("");
   const [demoUser, setDemoUser] = useState<DemoUser | null>(null);
   const [lastCaptureSubmission, setLastCaptureSubmission] = useState<CaptureSubmission | null>(null);
+  const [capturedApplianceImageUrl, setCapturedApplianceImageUrl] = useState("");
 
   function applyRestoredSwapRequest(restored: SwapRequest) {
     setSwapRequest(restored);
@@ -196,6 +376,23 @@ export default function HomePage() {
 
   useEffect(() => {
     const splashTimer = window.setTimeout(() => setShowSplash(false), 1800);
+
+    // dev 전용: ?demo=1 링크로 접속하면 로그인 화면을 건너뛰고 데모 유저로 진입해요.
+    const skipLogin = new URLSearchParams(window.location.search).get("demo") === "1";
+    if (skipLogin && !window.localStorage.getItem("swapit-demo-user")) {
+      const demoBypassUser: DemoUser = {
+        userId: 1,
+        userName: "데모",
+        phoneNumber: "01000000000",
+        thinqUserKey: "demo-thinq-key",
+        email: "demo@beyond404.dev",
+        emailVerified: true,
+      };
+      setDemoUser(demoBypassUser);
+      void restoreLatestSwapRequest(demoBypassUser);
+      return () => window.clearTimeout(splashTimer);
+    }
+
     const savedUser = window.localStorage.getItem("swapit-demo-user");
     if (!savedUser) return () => window.clearTimeout(splashTimer);
 
@@ -263,9 +460,13 @@ export default function HomePage() {
   const bookingMutation = useMutation({
     mutationFn: async (booking: BookingSelection) => {
       if (!swapRequest) throw new Error("Swap request is required");
+      const bookingSwapRequest =
+        swapRequest.status === "PRE_VALUATION_ACCEPTED"
+          ? swapRequest
+          : await acceptPreValuation(swapRequest.id);
       const data =
         booking.mode === "schedule"
-          ? await confirmBooking(swapRequest.id, {
+          ? await confirmBooking(bookingSwapRequest.id, {
               address: booking.pickupAddress ?? "A-12, New Delhi demo street",
               detailAddress: booking.detailAddress ?? "Demo street",
               pickupLat: booking.pickupLat ?? 28.6197,
@@ -273,7 +474,7 @@ export default function HomePage() {
               bookingDate: booking.bookingDate,
               bookingTime: booking.bookingTime,
             })
-          : await requestInstantCall(swapRequest.id, {
+          : await requestInstantCall(bookingSwapRequest.id, {
               address: booking.pickupAddress ?? "A-12, New Delhi demo street",
               detailAddress: booking.detailAddress ?? "Near LG demo pickup point",
               pickupLat: booking.pickupLat ?? 28.6197,
@@ -347,7 +548,9 @@ export default function HomePage() {
   const resetExchangeFlow = () => {
     setFileName("");
     setLastCaptureSubmission(null);
+    setCapturedApplianceImageUrl("");
     setSelectedPurchaseProductId(null);
+    setBookingPurpose("pickup");
     setSwapRequest(null);
     setSelectedAppliance(applianceOptions[0].id);
     setSwapStep("intro");
@@ -360,9 +563,60 @@ export default function HomePage() {
     setReservationAddress("");
   };
 
+  const openBookingScreen = (purpose: BookingPurpose = "pickup") => {
+    setBookingPurpose(purpose);
+    setSwapStep("booking");
+  };
+
+  const openPurchaseSelectionScreen = () => {
+    setSwapStep("market");
+  };
+
   const openOngoingReservation = () => {
     setSwapStep("ongoing");
     setSwapItOpened(true);
+  };
+
+  const moveToNextSwapScreen = () => {
+    const nextStep = nextSwapStep(swapStep);
+    const previewRequest = createPreviewSwapRequest();
+    const needsRequest = !["intro", "capture", "analyzing"].includes(nextStep);
+    const needsReservation = ["reservationComplete", "ongoing", "tracking", "credit"].includes(nextStep);
+
+    setShowSplash(false);
+    setMarketOpened(false);
+    setSwapItOpened(true);
+    setFileName((current) => current || "preview-washer-front.jpg");
+
+    if (needsRequest) {
+      setSwapRequest(previewRequest);
+    }
+
+    if (nextStep === "market" && !selectedPurchaseProductId) {
+      setSelectedPurchaseProductId("washer");
+    }
+
+    if (nextStep === "booking") {
+      setBookingPurpose(swapStep === "market" ? "installation" : "pickup");
+    }
+
+    if (needsReservation) {
+      const reservationDate = previewRequest.booking?.bookingDate ?? "2026-06-15";
+      const reservationTime = previewRequest.booking?.bookingTime ?? "09:00";
+      setActiveReservationRequest(previewRequest);
+      setReservationLabel(`${reservationDate} ${reservationTime}`);
+      setReservationAddress(previewRequest.booking?.address ?? "서울특별시 중구 세종대로 110");
+    }
+
+    if (nextStep === "tracking") {
+      setHomeSwapStatus("pickup");
+    } else if (nextStep === "credit") {
+      setHomeSwapStatus("reviewCompleted");
+    } else if (nextStep === "reservationComplete" || nextStep === "ongoing") {
+      setHomeSwapStatus("reserved");
+    }
+
+    setSwapStep(nextStep);
   };
 
   const screenSwapRequest =
@@ -391,24 +645,31 @@ export default function HomePage() {
 
   const isSwapIntroScreen = swapItOpened && swapStep === "intro";
   const isSwapCaptureScreen = Boolean(demoUser) && swapItOpened && swapStep === "capture" && !marketOpened;
+  const phoneViewportBackgroundClass =
+    showSplash || !thinQOpened
+      ? "bg-[#dfeec1]"
+      : !demoUser
+        ? "bg-white"
+        : isSwapIntroScreen
+          ? "swapit-pattern-bg"
+          : isSwapCaptureScreen
+            ? "bg-[#111318]"
+            : "bg-cloud";
 
   return (
-    <main className="min-h-screen bg-cloud md:flex md:items-center md:justify-center md:bg-[#202124] md:px-3 md:py-8">
-      <section className="relative min-h-[100dvh] w-full bg-cloud md:min-h-0 md:w-[min(100%,424px)] md:rounded-[52px] md:border-[8px] md:border-[#090a0f] md:bg-[#090a0f] md:p-[3px] md:shadow-phone">
-        <div className="pointer-events-none absolute left-1/2 top-[22px] z-20 hidden h-9 w-[126px] -translate-x-1/2 items-center justify-end rounded-full bg-black pr-3 md:flex">
-          <Camera size={13} className="text-slate-700" />
-        </div>
-        <div className="h-[100dvh] overflow-hidden rounded-none bg-cloud md:aspect-[402/874] md:h-auto md:rounded-[43px]">
+    <main className="flex min-h-[100dvh] justify-center bg-cloud">
+      <section className="relative min-h-[100dvh] w-full max-w-[430px] bg-cloud">
+        <div id="swapit-phone-viewport" className="relative h-[100dvh] w-full overflow-hidden bg-cloud">
           {showSplash ? (
             <ThinQSplashScreen />
           ) : thinQOpened ? (
             <div
               className={`relative flex h-full animate-[fadeIn_.18s_ease-out] flex-col ${
                 isSwapIntroScreen
-                  ? "bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,.38),transparent_28%),linear-gradient(180deg,#f47783_0%,#e95d6a_48%,#d94a59_100%)]"
+                  ? "swapit-pattern-bg"
                   : isSwapCaptureScreen
                     ? "bg-[#111318]"
-                    : "bg-white"
+                    : "bg-cloud"
               }`}
             >
               {isSwapIntroScreen ? (
@@ -416,7 +677,6 @@ export default function HomePage() {
               ) : null}
               {!isSwapCaptureScreen ? (
                 <PhoneStatusBar
-                  isDark={isSwapIntroScreen}
                   className={isSwapIntroScreen ? "bg-transparent" : demoUser && !marketOpened ? "bg-cloud" : "bg-white"}
                 />
               ) : null}
@@ -440,6 +700,7 @@ export default function HomePage() {
                   error={error}
                   analyzeError={analyzeMutation.error}
                   fileName={fileName}
+                  capturedImageUrl={capturedApplianceImageUrl}
                   isBusy={isBusy}
                   homeSwapStatus={homeSwapStatus}
                   reservationLabel={reservationLabel}
@@ -449,6 +710,11 @@ export default function HomePage() {
                   swapRequest={screenSwapRequest}
                   analyzeLoading={analyzeMutation.isPending}
                   bookingLoading={bookingMutation.isPending}
+                  bookingError={
+                    bookingMutation.error
+                      ? "예약을 완료하지 못했어요. 네트워크 상태를 확인하고 다시 시도하거나, 처음부터 다시 진행해 주세요."
+                      : ""
+                  }
                   creditLoading={creditMutation.isPending}
                   onBack={() => {
                     if (swapStep === "intro") {
@@ -477,6 +743,7 @@ export default function HomePage() {
                   onAnalyze={(submission) => {
                     setLastCaptureSubmission(submission);
                     setFileName(submission.exteriorPhotoFileName);
+                    setCapturedApplianceImageUrl(submission.exteriorPhotoUrl ?? "");
                     analyzeMutation.reset();
                     setSwapStep("analyzing");
                     analyzeMutation.mutate(submission);
@@ -490,8 +757,10 @@ export default function HomePage() {
                     setSwapStep("analyzing");
                     analyzeMutation.mutate(lastCaptureSubmission);
                   }}
-                  onValuationNext={() => acceptValuationMutation.mutate("booking")}
-                  onOpenPurchaseFlow={() => acceptValuationMutation.mutate("market")}
+                  bookingPurpose={bookingPurpose}
+                  onValuationNext={() => openBookingScreen("pickup")}
+                  onOpenInstallationBooking={() => openBookingScreen("installation")}
+                  onOpenPurchaseFlow={openPurchaseSelectionScreen}
                   selectedPurchaseProductId={selectedPurchaseProductId}
                   onSelectPurchaseProduct={setSelectedPurchaseProductId}
                   onBooking={(booking) => bookingMutation.mutate(booking)}
@@ -522,6 +791,7 @@ export default function HomePage() {
                     setSwapStep("tracking");
                   }}
                   onOpenCredit={() => setSwapStep("credit")}
+                  onNextScreen={moveToNextSwapScreen}
                 />
               ) : (
                 <ThinQHomeScreen
@@ -550,20 +820,21 @@ export default function HomePage() {
                   onLogout={resetDemoLogin}
                 />
               )}
-            </div>
-          ) : (
-            <ThinQSplashScreen />
-          )}
-        </div>
+              </div>
+            ) : (
+              <ThinQSplashScreen />
+            )}
+          </div>
       </section>
     </main>
   );
 }
 
+
 function ThinQSplashScreen() {
   return (
     <div className="relative flex h-full overflow-hidden bg-[#dfeec1]">
-      <PhoneStatusBar isDark={false} />
+      <PhoneStatusBar />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(255,255,255,.45),transparent_28%),linear-gradient(180deg,rgba(230,244,203,.72),rgba(214,232,184,.96))]" />
       <div className="absolute left-[11%] top-[26%] h-[22%] w-[24%] rounded-[32px] bg-white/18 blur-2xl" />
       <div className="absolute bottom-[12%] left-[6%] h-28 w-12 rounded-t-full bg-[#458f63]" />
@@ -580,7 +851,7 @@ function ThinQSplashScreen() {
       <div className="absolute bottom-[42%] right-[16%] h-10 w-10 rounded-full border-[5px] border-[#2f3338]" />
       <div className="absolute bottom-[31%] right-[43%] h-10 w-7 rounded-[8px] bg-[#27313b]" />
       <div className="absolute left-1/2 top-[42%] z-10 -translate-x-1/2 text-center">
-        <p className="text-[44px] font-black tracking-tight text-white drop-shadow-[0_14px_26px_rgba(126,151,96,.28)]">
+        <p className="text-[44px] font-bold tracking-tight text-white drop-shadow-[0_14px_26px_rgba(126,151,96,.28)]">
           LG ThinQ
         </p>
       </div>
@@ -613,43 +884,24 @@ function previousStep(step: SwapStep): SwapStep {
   }
 }
 
-function PhoneStatusBar({ isDark, className = "" }: { isDark: boolean; className?: string }) {
-  const [currentTime, setCurrentTime] = useState(() =>
-    new Intl.DateTimeFormat("ko-KR", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }).format(new Date()),
-  );
+function nextSwapStep(step: SwapStep): SwapStep {
+  const currentIndex = previewSwapSteps.indexOf(step);
+  if (currentIndex < 0) {
+    return "intro";
+  }
 
-  useEffect(() => {
-    const update = () =>
-      setCurrentTime(
-        new Intl.DateTimeFormat("ko-KR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        }).format(new Date()),
-      );
+  return previewSwapSteps[(currentIndex + 1) % previewSwapSteps.length];
+}
 
-    update();
-    const timer = window.setInterval(update, 30000);
-    return () => window.clearInterval(timer);
-  }, []);
-
+function PhoneStatusBar({ className = "" }: { className?: string }) {
+  // 시간/신호/배터리 아이콘 없이, 상단 노치 영역을 비워두는 스페이서.
+  // 최소 45px, 노치가 있는 기기에서는 safe-area만큼 자동으로 더 내려가요.
+  // 배경은 호출부 className으로 각 화면 배경색과 맞춰요.
   return (
     <div
-      className={`relative z-30 hidden h-[62px] items-start justify-between px-8 pt-4 text-[12px] font-bold md:flex ${className} ${
-        isDark ? "text-white" : "text-ink"
-      }`}
-    >
-      <span>{currentTime}</span>
-      <div className="flex items-center gap-1.5">
-        <CellularBars />
-        <WifiGlyph />
-        <BatteryGlyph />
-      </div>
-    </div>
+      aria-hidden="true"
+      className={`relative z-30 block h-[max(45px,env(safe-area-inset-top))] ${className}`}
+    />
   );
 }
 
@@ -726,7 +978,14 @@ function DemoLoginScreen({
     return error.message;
   }
 
-  async function connectVerifiedFirebaseUser(firebaseUser: FirebaseUser, fallbackName = userName, fallbackPhone = phoneNumber) {
+  async function connectVerifiedFirebaseUser(
+    firebaseUser: FirebaseUser,
+    options: {
+      fallbackName?: string;
+      fallbackPhone?: string;
+      includePhoneNumber?: boolean;
+    } = {},
+  ) {
     await reload(firebaseUser);
     if (!firebaseUser.email) {
       throw new Error("이메일 정보를 확인할 수 없습니다.");
@@ -735,13 +994,17 @@ function DemoLoginScreen({
       throw new Error("이메일 인증이 아직 완료되지 않았습니다.");
     }
 
-    return firebaseLogin({
+    const fallbackName = options.fallbackName ?? userName;
+    const fallbackPhone = (options.fallbackPhone ?? phoneNumber).trim();
+    const payload = {
       firebaseUid: firebaseUser.uid,
       email: firebaseUser.email,
       emailVerified: firebaseUser.emailVerified,
       userName: firebaseUser.displayName || fallbackName.trim() || firebaseUser.email.split("@")[0],
-      phoneNumber: fallbackPhone.trim(),
-    });
+      ...(options.includePhoneNumber && fallbackPhone ? { phoneNumber: fallbackPhone } : {}),
+    };
+
+    return firebaseLogin(payload);
   }
 
   function resetAuthFeedback() {
@@ -791,7 +1054,11 @@ function DemoLoginScreen({
       if (!user) {
         throw new Error("인증 확인할 사용자가 없습니다. 다시 회원가입을 진행해주세요.");
       }
-      return connectVerifiedFirebaseUser(user);
+      return connectVerifiedFirebaseUser(user, {
+        includePhoneNumber: true,
+        fallbackName: userName,
+        fallbackPhone: phoneNumber,
+      });
     },
     onSuccess: onAuthenticated,
   });
@@ -824,7 +1091,7 @@ function DemoLoginScreen({
         <section>
           <LgElectronicsLogo className="mb-12" />
 
-          <p className="mb-2 text-[30px] font-black tracking-tight text-black">ThinQ 계정 만들기</p>
+          <p className="mb-2 text-[30px] font-bold tracking-tight text-black">ThinQ 계정 만들기</p>
           <p className="mb-8 text-[15px] font-semibold leading-6 text-slate-500">
             이메일 인증이 완료된 계정만 SwapIt 신청 데이터와 연결됩니다.
           </p>
@@ -844,7 +1111,7 @@ function DemoLoginScreen({
                 type="email"
               />
               <button
-                className="shrink-0 rounded-full bg-lgred px-4 py-2 text-[12px] font-black text-white disabled:bg-[#e8e8e8] disabled:text-[#aaa]"
+                className="shrink-0 rounded-full bg-lgred px-4 py-2 text-[12px] font-semibold text-white disabled:bg-[#e8e8e8] disabled:text-[#aaa]"
                 disabled={verificationButtonDisabled}
                 onClick={() => {
                   resetAuthFeedback();
@@ -882,7 +1149,7 @@ function DemoLoginScreen({
                 type={showPassword ? "text" : "password"}
               />
               <button
-                className="shrink-0 text-sm font-black text-[#555]"
+                className="shrink-0 text-sm font-bold text-[#555]"
                 onClick={() => setShowPassword((visible) => !visible)}
                 type="button"
               >
@@ -932,7 +1199,7 @@ function DemoLoginScreen({
           ) : null}
 
           <button
-            className="mt-8 w-full text-center text-[18px] font-black text-[#555]"
+            className="mt-8 w-full text-center text-[18px] font-bold text-[#555]"
             onClick={showLoginMode}
             type="button"
           >
@@ -976,7 +1243,7 @@ function DemoLoginScreen({
               type={showPassword ? "text" : "password"}
             />
             <button
-              className="shrink-0 text-sm font-black text-[#555]"
+              className="shrink-0 text-sm font-bold text-[#555]"
               onClick={() => setShowPassword((visible) => !visible)}
               type="button"
             >
@@ -1007,7 +1274,7 @@ function DemoLoginScreen({
         ) : null}
 
         <button
-          className="mt-7 h-16 w-full rounded-2xl bg-lgred text-[22px] font-black text-white disabled:bg-[#e8e8e8] disabled:text-[#b8b8b8]"
+          className="mt-7 h-16 w-full rounded-2xl bg-lgred text-[22px] font-bold text-white disabled:bg-[#e8e8e8] disabled:text-[#b8b8b8]"
           disabled={!firebaseReady || emailLoginMutation.isPending || !canLogin}
           onClick={() => {
             setAuthNotice("");
@@ -1028,7 +1295,7 @@ function DemoLoginScreen({
 
         <div className="mt-3 flex justify-center">
           <button
-            className="font-black text-[#555]"
+            className="font-bold text-[#555]"
             onClick={showSignupMode}
             type="button"
           >
@@ -1043,8 +1310,8 @@ function DemoLoginScreen({
 function LgElectronicsLogo({ className = "" }: { className?: string }) {
   return (
     <div className={`flex items-baseline gap-2 ${className}`}>
-      <span className="text-[34px] font-black tracking-[-0.03em] text-[#777]">LG</span>
-      <span className="text-[34px] font-black tracking-[-0.03em] text-lgred">ThinQ</span>
+      <span className="text-[34px] font-bold tracking-[-0.03em] text-[#777]">LG</span>
+      <span className="text-[34px] font-bold tracking-[-0.03em] text-lgred">ThinQ</span>
     </div>
   );
 }
@@ -1095,11 +1362,11 @@ function ThinQHomeScreen({
           <ArrowLeft size={18} />
         </button>
         <div className="text-center">
-          <p className="text-xs font-black text-lgred">LG ThinQ</p>
-          <p className="text-[11px] font-semibold text-slate-400">Home</p>
+          <p className="text-xs font-semibold text-lgred">LG ThinQ</p>
+          <p className="text-[11px] font-semibold text-slate-500">Home</p>
         </div>
         <button
-          className="h-9 rounded-full px-3 text-[11px] font-black text-slate-500"
+          className="h-9 rounded-full px-3 text-[11px] font-semibold text-slate-500"
           onClick={onLogout}
         >
           로그아웃
@@ -1109,33 +1376,33 @@ function ThinQHomeScreen({
       <div className="phone-scroll min-h-0 flex-1 space-y-3 overflow-y-auto pb-3">
         <section className="px-1 pb-1 pt-2">
           <p className="text-[15px] font-bold text-slate-500">{demoUser.userName}님, 안녕하세요</p>
-          <h1 className="mt-1 whitespace-nowrap text-[17px] font-black leading-tight text-ink sm:text-[18px]">
+          <h1 className="mt-1 whitespace-nowrap text-[17px] font-bold leading-tight text-ink sm:text-[18px]">
             오늘도 우리 집은 안심 맑음 상태입니다.
           </h1>
         </section>
 
         <section className="rounded-[20px] bg-white p-4 shadow-sm">
-          <button className="flex w-full items-center justify-between text-left" onClick={onOpenReservation}>
+          <div className="flex w-full items-center justify-between">
             <span>
               <span className="block text-[13px] font-bold text-slate-500">우리 집 상태</span>
-              <span className="mt-1 block text-[24px] font-black leading-none text-ink">안심</span>
+              <span className="mt-1 block text-[24px] font-bold leading-none text-ink">안심</span>
             </span>
-            <span className="rounded-full bg-lgred/10 px-3 py-1.5 text-[12px] font-black text-lgred">
+            <span className="rounded-full bg-lgred/10 px-3 py-1.5 text-[12px] font-semibold text-lgred">
               방금 전 업데이트
             </span>
-          </button>
+          </div>
           <div className="mt-4 grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 pt-4">
             <div>
-              <p className="text-[20px] font-black leading-none text-lgred">2대</p>
-              <p className="mt-1 text-[11px] font-bold text-slate-400">연결 가전</p>
+              <p className="text-[20px] font-bold leading-none text-lgred">2대</p>
+              <p className="mt-1 text-[11px] font-bold text-slate-500">연결 가전</p>
             </div>
             <div className="pl-4">
-              <p className="text-[20px] font-black leading-none text-ink">0건</p>
-              <p className="mt-1 text-[11px] font-bold text-slate-400">점검 필요</p>
+              <p className="text-[20px] font-bold leading-none text-ink">0건</p>
+              <p className="mt-1 text-[11px] font-bold text-slate-500">점검 필요</p>
             </div>
             <div className="pl-4">
-              <p className="text-[20px] font-black leading-none text-ink">1건</p>
-              <p className="mt-1 text-[11px] font-bold text-slate-400">추천 케어</p>
+              <p className="text-[20px] font-bold leading-none text-ink">1건</p>
+              <p className="mt-1 text-[11px] font-bold text-slate-500">추천 케어</p>
             </div>
           </div>
         </section>
@@ -1150,8 +1417,8 @@ function ThinQHomeScreen({
 
         <section className="rounded-[20px] bg-white p-2 shadow-sm">
           <div className="flex items-center justify-between px-3 py-2.5">
-            <h2 className="text-sm font-black text-ink">내 디바이스</h2>
-            <button className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-500">
+            <h2 className="text-sm font-bold text-ink">내 디바이스</h2>
+            <button className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">
               전체 2
             </button>
           </div>
@@ -1170,12 +1437,12 @@ function ThinQHomeScreen({
               <Recycle size={24} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-black">SwapIt 가전 교환</span>
+              <span className="block text-sm font-bold">SwapIt 가전 교환</span>
               <span className="mt-0.5 block truncate text-xs text-slate-500">
                 사진 등록부터 보상, 수거 예약까지
               </span>
             </span>
-            <ChevronRight size={20} className="text-slate-300" />
+            <ChevronRight size={20} className="text-slate-400" />
           </button>
           <button
             className="flex w-full items-center gap-3 rounded-[16px] p-3 text-left text-ink"
@@ -1185,12 +1452,12 @@ function ThinQHomeScreen({
               <ShoppingBag size={24} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-black">LG 가전 마켓</span>
+              <span className="block text-sm font-bold">LG 가전 마켓</span>
               <span className="mt-0.5 block truncate text-xs text-slate-500">
                 SwapIt 크레딧으로 공식 LG 상품 구매
               </span>
             </span>
-            <ChevronRight size={20} className="text-slate-400" />
+            <ChevronRight size={20} className="text-slate-500" />
           </button>
         </section>
       </div>
@@ -1198,19 +1465,19 @@ function ThinQHomeScreen({
       <nav className="grid h-[70px] shrink-0 grid-cols-4 rounded-[22px] bg-white px-2 py-2 shadow-sm">
         <button className="flex flex-col items-center justify-center gap-1 text-lgred">
           <Home size={20} />
-          <span className="text-[10px] font-black">홈</span>
+          <span className="text-[10px] font-semibold">홈</span>
         </button>
-        <button className="flex flex-col items-center justify-center gap-1 text-slate-400">
+        <button className="flex flex-col items-center justify-center gap-1 text-slate-500">
           <Refrigerator size={20} />
-          <span className="text-[10px] font-black">디바이스</span>
+          <span className="text-[10px] font-semibold">디바이스</span>
         </button>
-        <button className="flex flex-col items-center justify-center gap-1 text-slate-400" onClick={onOpenReview}>
+        <button className="flex flex-col items-center justify-center gap-1 text-slate-500" onClick={onOpenReview}>
           <Sparkles size={20} />
-          <span className="text-[10px] font-black">케어</span>
+          <span className="text-[10px] font-semibold">케어</span>
         </button>
-        <button className="flex flex-col items-center justify-center gap-1 text-slate-400" onClick={onOpenMarket}>
+        <button className="flex flex-col items-center justify-center gap-1 text-slate-500" onClick={onOpenMarket}>
           <ShoppingBag size={20} />
-          <span className="text-[10px] font-black">메뉴</span>
+          <span className="text-[10px] font-semibold">메뉴</span>
         </button>
       </nav>
     </div>
@@ -1240,18 +1507,18 @@ function LgMarketScreen({
           <ArrowLeft size={18} />
         </button>
         <div className="text-center">
-          <p className="text-xs font-black text-lgred">LG 가전 마켓</p>
-          <p className="text-[11px] font-semibold text-slate-400">Credit applied</p>
+          <p className="text-xs font-semibold text-lgred">LG 가전 마켓</p>
+          <p className="text-[11px] font-semibold text-slate-500">Credit applied</p>
         </div>
-        <button className="h-9 rounded-full bg-white px-3 text-[11px] font-black text-lgred shadow-sm" onClick={onReturnHome}>
+        <button className="h-9 rounded-full bg-white px-3 text-[11px] font-semibold text-lgred shadow-sm" onClick={onReturnHome}>
           홈
         </button>
       </header>
 
       <div className="phone-scroll flex-1 overflow-y-auto">
         <section className="rounded-3xl bg-lgred p-5 text-white shadow-sm">
-          <p className="text-xs font-black text-white/75">보유 SwapIt 크레딧</p>
-          <h1 className="mt-1 text-3xl font-black">₩{amount.toLocaleString()}</h1>
+          <p className="text-xs font-semibold text-white/75">보유 SwapIt 크레딧</p>
+          <h1 className="mt-1 text-3xl font-bold">₩{amount.toLocaleString()}</h1>
           <p className="mt-3 text-sm leading-6 text-white/80">선택한 LG 가전에 예상 보상 크레딧을 적용한 가격을 확인할 수 있습니다.</p>
         </section>
 
@@ -1260,23 +1527,23 @@ function LgMarketScreen({
             <div className="flex gap-4">
               <ProductImage product={selectedProduct} size="large" />
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-black text-lgred">{selectedProduct.category}</p>
-                <h2 className="mt-1 text-lg font-black leading-snug text-ink">{selectedProduct.name}</h2>
+                <p className="text-xs font-semibold text-lgred">{selectedProduct.category}</p>
+                <h2 className="mt-1 text-lg font-bold leading-snug text-ink">{selectedProduct.name}</h2>
                 <p className="mt-2 text-sm text-slate-500">{selectedProduct.description}</p>
               </div>
             </div>
             <div className="mt-4 rounded-xl bg-cloud p-3">
               <p className="text-xs font-bold text-slate-500">제품 가격</p>
-              <p className="text-xl font-black text-ink">₩{selectedProduct.price.toLocaleString()}</p>
+              <p className="text-xl font-bold text-ink">₩{selectedProduct.price.toLocaleString()}</p>
               <p className="mt-1 text-xs font-bold text-lgred">크레딧 적용가 ₩{Math.max(selectedProduct.price - amount, 0).toLocaleString()}</p>
             </div>
-            <button className="mt-4 h-12 w-full rounded-xl bg-lgred text-sm font-black text-white">
+            <button className="mt-4 h-12 w-full rounded-xl bg-lgred text-sm font-bold text-white">
               구매 진행
             </button>
           </section>
         ) : (
           <section className="mt-4 space-y-3">
-            <h2 className="text-sm font-black text-ink">추천 LG 가전</h2>
+            <h2 className="text-sm font-bold text-ink">추천 LG 가전</h2>
             {marketProducts.map((product) => (
               <button
                 key={product.id}
@@ -1285,11 +1552,11 @@ function LgMarketScreen({
               >
                 <ProductImage product={product} size="small" />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-black text-lgred">{product.category}</span>
-                  <span className="block truncate text-sm font-black text-ink">{product.name}</span>
+                  <span className="block text-xs font-semibold text-lgred">{product.category}</span>
+                  <span className="block truncate text-sm font-bold text-ink">{product.name}</span>
                   <span className="mt-1 block text-xs text-slate-500">크레딧 적용가 ₩{Math.max(product.price - amount, 0).toLocaleString()}</span>
                 </span>
-                <span className="rounded-full bg-lgred/10 px-3 py-1 text-xs font-black text-lgred">선택</span>
+                <span className="rounded-full bg-lgred/10 px-3 py-1 text-xs font-semibold text-lgred">선택</span>
               </button>
             ))}
           </section>
@@ -1345,10 +1612,10 @@ function SwapItStatusCard({
           <Icon size={22} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className={"mb-0.5 block text-[11px] font-black " + (isCompleted ? "text-white/70" : "text-lgred")}>
+          <span className={"mb-0.5 block text-[11px] font-semibold " + (isCompleted ? "text-white/70" : "text-lgred")}>
             진행 중인 예약
           </span>
-          <span className="block text-sm font-black">{card.title}</span>
+          <span className="block text-sm font-bold">{card.title}</span>
           <span className={"mt-0.5 block truncate text-xs " + (isCompleted ? "text-white/75" : "text-slate-500")}>
             {card.description}
           </span>
@@ -1365,19 +1632,19 @@ function getHomeStatusCard(status: HomeSwapStatus, reservationLabel: string) {
       return {
         icon: CalendarCheck,
         title: "수거 예약이 완료됐어요",
-        description: (reservationLabel || "예약 시간") + "에 맞춰 수거가 진행됩니다.",
+        description: (reservationLabel || "예약 시간") + "에 맞춰 수거가 진행돼요.",
       };
     case "pickup":
       return {
         icon: Truck,
         title: "수거가 진행 중이에요",
-        description: "배정된 수거 크루가 방문을 준비하고 있습니다.",
+        description: "배정된 수거 크루가 방문을 준비하고 있어요.",
       };
     case "reviewPending":
       return {
         icon: ClipboardCheck,
         title: "최종 확인 중",
-        description: "수거물 확인과 허브 인수 절차가 완료되면 ThinQ 알림으로 안내해 드립니다.",
+        description: "수거물 확인과 허브 인수 절차가 완료되면 ThinQ 알림으로 안내해 드려요.",
       };
     case "reviewCompleted":
       return {
@@ -1389,7 +1656,7 @@ function getHomeStatusCard(status: HomeSwapStatus, reservationLabel: string) {
       return {
         icon: Clock,
         title: "재검토 중",
-        description: "요청하신 내용을 기준으로 다시 확인하고 있습니다.",
+        description: "요청하신 내용을 기준으로 다시 확인하고 있어요.",
       };
     case "reReviewCompleted":
       return {
@@ -1410,6 +1677,7 @@ function SwapItFeatureScreen(props: {
   error: unknown;
   analyzeError: unknown;
   fileName: string;
+  capturedImageUrl: string;
   isBusy: boolean;
   homeSwapStatus: HomeSwapStatus;
   reservationLabel: string;
@@ -1419,6 +1687,8 @@ function SwapItFeatureScreen(props: {
   swapRequest: SwapRequest | null;
   analyzeLoading: boolean;
   bookingLoading: boolean;
+  bookingError: string;
+  bookingPurpose: BookingPurpose;
   creditLoading: boolean;
   onBack: () => void;
   onClose: () => void;
@@ -1429,6 +1699,7 @@ function SwapItFeatureScreen(props: {
   onAnalyze: (submission: CaptureSubmission) => void;
   onRetryAnalysis: () => void;
   onValuationNext: () => void;
+  onOpenInstallationBooking: () => void;
   onOpenPurchaseFlow: () => void;
   selectedPurchaseProductId: "washer" | "fridge" | "aircon" | null;
   onSelectPurchaseProduct: (productId: "washer" | "fridge" | "aircon" | null) => void;
@@ -1444,6 +1715,7 @@ function SwapItFeatureScreen(props: {
   onViewReservation: () => void;
   onOpenTracking: () => void;
   onOpenCredit: () => void;
+  onNextScreen: () => void;
 }) {
   const selectedLabel =
     applianceOptions.find((option) => option.id === props.selectedAppliance)?.label ?? "가전";
@@ -1455,6 +1727,16 @@ function SwapItFeatureScreen(props: {
         props.step === "intro" ? "overflow-hidden" : ""
       }`}
     >
+      {!showFeatureHeader ? (
+        <button
+          className="absolute right-4 top-4 z-40 rounded-full bg-white/95 px-4 py-2 text-xs font-bold text-lgred shadow-sm ring-1 ring-lgred/10"
+          onClick={props.onNextScreen}
+          type="button"
+        >
+          다음 화면
+        </button>
+      ) : null}
+
       {showFeatureHeader ? (
         <header className="relative z-20 px-4 pb-3">
           <div className="mb-3 flex items-center justify-between">
@@ -1468,7 +1750,14 @@ function SwapItFeatureScreen(props: {
               <ArrowLeft size={18} />
             </button>
             <button
-              className={`h-9 rounded-full bg-white/95 px-3 text-xs font-bold text-lgred shadow-sm disabled:text-slate-400 ${
+              className="h-9 rounded-full bg-white/95 px-4 text-xs font-bold text-lgred shadow-sm ring-1 ring-lgred/10"
+              onClick={props.onNextScreen}
+              type="button"
+            >
+              다음 화면
+            </button>
+            <button
+              className={`h-9 rounded-full bg-white/95 px-3 text-xs font-bold text-lgred shadow-sm disabled:text-slate-500 ${
                 props.step === "tracking" ? "invisible w-9 px-0" : ""
               }`}
               disabled={props.isBusy}
@@ -1484,7 +1773,7 @@ function SwapItFeatureScreen(props: {
             <ThreeStepProgress step={props.step} />
           ) : null}
           {(props.step === "ongoing" || props.step === "tracking" || props.step === "credit") ? (
-            <OngoingReservationHeader step={props.step} />
+            <OngoingReservationHeader bookingPurpose={props.bookingPurpose} step={props.step} />
           ) : null}
         </header>
       ) : null}
@@ -1525,6 +1814,7 @@ function SwapItFeatureScreen(props: {
         ) : null}
         {props.step === "valuation" ? (
           <PreValuationPanel
+            capturedImageUrl={props.capturedImageUrl}
             loading={props.isBusy}
             onNext={props.onValuationNext}
             onOpenPurchase={props.onOpenPurchaseFlow}
@@ -1536,18 +1826,21 @@ function SwapItFeatureScreen(props: {
             estimatedCredit={Math.round(((props.swapRequest?.preValuation.minEstimatedValue ?? 0) + (props.swapRequest?.preValuation.maxEstimatedValue ?? 0)) / 2)}
             selectedProductId={props.selectedPurchaseProductId}
             onSelectProduct={(productId) => props.onSelectPurchaseProduct(productId)}
-            onContinueToBooking={props.onValuationNext}
+            onContinueToBooking={props.onOpenInstallationBooking}
           />
         ) : null}
         {props.step === "booking" ? (
           <BookingPanel
+            bookingPurpose={props.bookingPurpose}
             swapRequest={props.swapRequest}
             loading={props.bookingLoading}
+            errorMessage={props.bookingError}
             onBooking={props.onBooking}
           />
         ) : null}
         {props.step === "reservationComplete" ? (
           <ReservationCompletePanel
+            bookingPurpose={props.bookingPurpose}
             reservationAddress={props.reservationAddress}
             reservationLabel={props.reservationLabel}
             onClose={props.onCloseReservationComplete}
@@ -1556,6 +1849,7 @@ function SwapItFeatureScreen(props: {
         ) : null}
         {props.step === "ongoing" ? (
           <OngoingReservationPanel
+            bookingPurpose={props.bookingPurpose}
             reservationLabel={props.reservationLabel}
             reservationAddress={props.reservationAddress}
             status={props.homeSwapStatus}
@@ -1609,15 +1903,15 @@ function StepProgress({ step }: { step: SwapStep }) {
             <div key={item.id} className="flex flex-1 items-center last:flex-none">
               <div className="flex shrink-0 flex-col items-center gap-1">
                 <div
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-black transition-colors ${
-                    active || done ? "bg-lgred text-white" : "bg-[#e8e8f1] text-slate-400"
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                    active || done ? "bg-lgred text-white" : "bg-[#e8e8f1] text-slate-500"
                   }`}
                 >
                   {item.id}
                 </div>
                 <span
-                  className={`text-[10px] font-black leading-none ${
-                    active || done ? "text-lgred" : "text-slate-400"
+                  className={`text-[10px] font-semibold leading-none ${
+                    active || done ? "text-lgred" : "text-slate-500"
                   }`}
                 >
                   {item.label}
@@ -1657,15 +1951,15 @@ function ThreeStepProgress({ step }: { step: SwapStep }) {
             <div key={item.id} className="flex flex-1 items-center last:flex-none">
               <div className="flex shrink-0 flex-col items-center gap-1">
                 <div
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-black transition-colors ${
-                    active || done ? "bg-lgred text-white" : "bg-[#e8e8f1] text-slate-400"
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                    active || done ? "bg-lgred text-white" : "bg-[#e8e8f1] text-slate-500"
                   }`}
                 >
                   {item.id}
                 </div>
                 <span
-                  className={`text-[10px] font-black leading-none ${
-                    active || done ? "text-lgred" : "text-slate-400"
+                  className={`text-[10px] font-semibold leading-none ${
+                    active || done ? "text-lgred" : "text-slate-500"
                   }`}
                 >
                   {item.label}
@@ -1686,21 +1980,40 @@ function ThreeStepProgress({ step }: { step: SwapStep }) {
   );
 }
 
-function OngoingReservationHeader({ step }: { step: "ongoing" | "tracking" | "credit" }) {
+function OngoingReservationHeader({
+  bookingPurpose,
+  step,
+}: {
+  bookingPurpose: BookingPurpose;
+  step: "ongoing" | "tracking" | "credit";
+}) {
+  const isInstallation = bookingPurpose === "installation";
   const title =
-    step === "ongoing" ? "진행 중인 예약" : step === "tracking" ? "진행 중인 예약 · 수거 진행" : "진행 중인 예약 · 보상 단계";
+    step === "ongoing"
+      ? isInstallation
+        ? "진행 중인 설치 예약"
+        : "진행 중인 예약"
+      : step === "tracking"
+        ? isInstallation
+          ? "진행 중인 예약 · 설치와 수거"
+          : "진행 중인 예약 · 수거 진행"
+        : "진행 중인 예약 · 보상 단계";
   const description =
     step === "ongoing"
-      ? "예약 정보 확인, STEP 4 크루 이동 확인, STEP 5 전체 보상 확인으로 이어지는 전용 화면입니다."
+      ? isInstallation
+        ? "설치 예약 정보와 크루 이동 상태를 이어서 확인할 수 있어요."
+        : "예약 정보와 크루 이동 상태를 이어서 확인할 수 있어요."
       : step === "tracking"
-        ? "크루 이동, 수거 진행, GPS 추적을 한 화면에서 확인합니다."
-        : "수거 완료 이후 검수, 최종 보상가, 크레딧 발급 단계를 이어서 확인합니다.";
+        ? isInstallation
+          ? "크루 이동, 새 제품 설치, 기존 제품 수거 진행을 한 화면에서 확인해요."
+          : "크루 이동, 수거 진행, GPS 추적을 한 화면에서 확인해요."
+        : "수거 완료 이후 검수, 최종 보상가, 크레딧 발급 단계를 이어서 확인해요.";
 
   return (
     <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
-      <p className="text-xs font-black text-lgred">ONGOING RESERVATION</p>
-      <p className="mt-1 text-sm font-black text-ink">{title}</p>
-      <p className="mt-1 text-[11px] font-semibold leading-5 text-slate-500">{description}</p>
+      <p className="text-xs font-bold text-lgred">ONGOING RESERVATION</p>
+      <p className="mt-1 text-[13px] font-bold text-ink">{title}</p>
+      <p className="mt-1 text-[10px] font-medium leading-4 text-slate-500">{description}</p>
     </div>
   );
 }
@@ -1718,7 +2031,7 @@ function getContentClassName(step: SwapStep) {
     return "relative z-10 flex-1 overflow-hidden px-4 pb-4";
   }
 
-  return "phone-scroll relative z-10 flex-1 overflow-y-auto px-4 pb-5";
+  return "phone-scroll relative z-10 flex-1 overflow-y-auto px-4 pb-4";
 }
 
 function getProgressStep(step: SwapStep) {
@@ -1757,6 +2070,15 @@ function SwapItIntro({
     air_conditioner: "에어컨",
     microwave: "전자레인지",
     tv: "TV",
+    air_purifier: "공기청정기",
+  };
+  const applianceTints: Record<ApplianceId, string> = {
+    washing_machine: "from-[#e8f1ff] to-[#cfe2fb]",
+    refrigerator: "from-[#e6f7f4] to-[#cdeee7]",
+    air_conditioner: "from-[#e6f6fd] to-[#cdeefb]",
+    microwave: "from-[#fdeee6] to-[#fbd9c7]",
+    tv: "from-[#eceaff] to-[#d9d6fb]",
+    air_purifier: "from-[#e9f8ec] to-[#d2efd8]",
   };
   const selectedLabel = applianceLabels[selectedAppliance];
 
@@ -1767,74 +2089,71 @@ function SwapItIntro({
 
       <div className="phone-scroll relative z-10 min-h-0 flex-1 overflow-y-auto pb-3">
         <section className="px-1 pb-4 pt-4 text-white">
-          <p className="text-[13px] font-black text-white/75">LG ThinQ</p>
-          <h1 className="mt-2 text-[34px] font-black leading-none tracking-tight">SwapIt</h1>
+          <p className="text-[13px] font-bold text-white/75">LG ThinQ</p>
+          <h1 className="mt-2 text-[34px] font-bold leading-none tracking-tight">SwapIt</h1>
           <p className="mt-3 max-w-[310px] text-sm font-semibold leading-6 text-white/85">
             교체할 가전을 선택하면 사진 촬영부터 보상가 확인, 수거 예약까지 한 번에 진행할 수 있어요.
           </p>
         </section>
 
         <section className="rounded-[20px] bg-white p-4 shadow-sm">
-          <button className="flex w-full items-center justify-between text-left" onClick={onStart}>
+          <div className="flex w-full items-center justify-between">
             <span>
               <span className="block text-[13px] font-bold text-slate-500">선택한 가전</span>
-              <span className="mt-1 block text-[24px] font-black leading-none text-ink">{selectedLabel}</span>
+              <span className="mt-1 block text-[24px] font-bold leading-none text-ink">{selectedLabel}</span>
             </span>
-            <span className="rounded-full bg-lgred/10 px-3 py-1.5 text-[12px] font-black text-lgred">
+            <span className="rounded-full bg-lgred/10 px-3 py-1.5 text-[12px] font-semibold text-lgred">
               STEP 1
             </span>
-          </button>
+          </div>
           <div className="mt-4 grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 pt-4">
             <div className="min-w-0 px-2 first:pl-0">
-              <p className="text-[18px] font-black leading-none text-lgred">사진</p>
-              <p className="mt-1 text-[11px] font-bold text-slate-400">상태 분석</p>
+              <p className="text-[18px] font-bold leading-none text-lgred">사진</p>
+              <p className="mt-1 text-[11px] font-bold text-slate-500">상태 분석</p>
             </div>
             <div className="min-w-0 px-2">
-              <p className="text-[18px] font-black leading-none text-ink">보상</p>
-              <p className="mt-1 text-[11px] font-bold text-slate-400">크레딧 확인</p>
+              <p className="text-[18px] font-bold leading-none text-ink">보상</p>
+              <p className="mt-1 text-[11px] font-bold text-slate-500">크레딧 확인</p>
             </div>
             <div className="min-w-0 px-2 last:pr-0">
-              <p className="text-[18px] font-black leading-none text-ink">수거</p>
-              <p className="mt-1 text-[11px] font-bold text-slate-400">예약 진행</p>
+              <p className="text-[18px] font-bold leading-none text-ink">수거</p>
+              <p className="mt-1 text-[11px] font-bold text-slate-500">예약 진행</p>
             </div>
           </div>
         </section>
 
         <section className="mt-3 rounded-[20px] bg-white p-2 shadow-sm">
           <div className="flex items-center justify-between px-3 py-2.5">
-            <h2 className="text-sm font-black text-ink">교환할 가전 선택</h2>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black text-slate-500">
+            <h2 className="text-sm font-bold text-ink">교환할 가전 선택</h2>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">
               {applianceOptions.length}개
             </span>
           </div>
-          <div className="divide-y divide-slate-100">
+          <div className="grid grid-cols-3 gap-2 p-1">
             {applianceOptions.map((option) => {
-              const Icon = option.icon;
               const active = selectedAppliance === option.id;
 
               return (
                 <button
                   key={option.id}
-                  className="flex w-full items-center gap-3 rounded-[16px] px-3 py-3 text-left"
+                  className={`relative flex flex-col items-center gap-2 rounded-2xl p-3 shadow-[0_2px_10px_rgba(20,30,60,0.06)] transition ${
+                    active ? "bg-lgred/5 ring-2 ring-lgred/40" : "bg-white ring-1 ring-slate-100"
+                  }`}
                   onClick={() => onApplianceChange(option.id)}
                 >
                   <span
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] ${
-                      active ? "bg-lgred text-white" : "bg-lgred/10 text-lgred"
+                    className={`absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full text-white shadow-sm ${
+                      active ? "bg-lgred" : "bg-slate-300/90"
                     }`}
                   >
-                    <Icon size={22} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-black text-ink">{applianceLabels[option.id]}</span>
+                    {active ? <Check size={12} strokeWidth={3.5} /> : <Plus size={12} strokeWidth={3} />}
                   </span>
                   <span
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-black ${
-                      active ? "bg-lgred/10 text-lgred" : "bg-slate-100 text-slate-400"
-                    }`}
+                    className={`flex h-[60px] w-[60px] items-center justify-center rounded-full bg-gradient-to-br ${applianceTints[option.id]} ring-1 ring-white/80 shadow-[inset_0_2px_6px_rgba(255,255,255,0.85),0_4px_10px_rgba(30,40,70,0.10)]`}
                   >
-                    {active ? "선택됨" : "선택"}
+                    <Appliance3DIcon id={option.id} className="h-9 w-9" />
                   </span>
+                  <span className="text-[12px] font-bold text-ink">{applianceLabels[option.id]}</span>
                 </button>
               );
             })}
@@ -1842,9 +2161,9 @@ function SwapItIntro({
         </section>
       </div>
 
-      <div className="relative z-10 shrink-0 rounded-[22px] bg-white p-2 shadow-sm">
+      <div className="relative z-10 shrink-0">
         <button
-          className="h-14 w-full rounded-[16px] bg-lgred text-sm font-black text-white"
+          className="h-14 w-full rounded-[16px] bg-lgred text-sm font-bold text-white"
           onClick={onStart}
         >
           사진 등록하러 가기
@@ -1871,13 +2190,13 @@ function DeviceCard({
     <div className="flex items-center gap-3 rounded-[16px] px-3 py-3">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-lgred/10 text-lgred">{icon}</div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-black text-ink">{label}</p>
+        <p className="text-sm font-bold text-ink">{label}</p>
         <p className="mt-0.5 text-xs font-semibold text-slate-500">{status}</p>
       </div>
-      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-500">
+      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
         보기
       </span>
-      <ChevronRight size={18} className="text-slate-300" />
+      <ChevronRight size={18} className="text-slate-400" />
     </div>
   );
 }
@@ -1893,53 +2212,3 @@ function HomeIcon({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-function CellularBars() {
-  return (
-    <span className="flex h-3 items-end gap-[1px]" aria-hidden="true">
-      <span className="h-[3px] w-[2px] rounded-full bg-current opacity-60" />
-      <span className="h-[5px] w-[2px] rounded-full bg-current opacity-70" />
-      <span className="h-[7px] w-[2px] rounded-full bg-current opacity-85" />
-      <span className="h-[9px] w-[2px] rounded-full bg-current" />
-    </span>
-  );
-}
-
-function WifiGlyph() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="h-[11px] w-[15px]"
-      fill="none"
-      height="11"
-      viewBox="0 0 15 11"
-      width="15"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M7.5 2.5C5.45 2.5 3.57 3.23 2.1 4.45C1.91 4.61 1.62 4.59 1.45 4.41L.82 3.75C.62 3.54.65 3.2.89 3.02C2.94 1.37 5.55.5 7.5.5C9.45.5 12.06 1.37 14.11 3.02C14.35 3.2 14.38 3.54 14.18 3.75L13.55 4.41C13.38 4.59 13.09 4.61 12.9 4.45C11.43 3.23 9.55 2.5 7.5 2.5Z"
-        fill="currentColor"
-        opacity="0.45"
-      />
-      <path
-        d="M7.5 5.35C6.36 5.35 5.31 5.76 4.49 6.44C4.3 6.6 4.02 6.58 3.85 6.4L3.22 5.74C3.02 5.53 3.05 5.2 3.29 5.02C4.45 4.1 5.91 3.6 7.5 3.6C9.09 3.6 10.55 4.1 11.71 5.02C11.95 5.2 11.98 5.53 11.78 5.74L11.15 6.4C10.98 6.58 10.7 6.6 10.51 6.44C9.69 5.76 8.64 5.35 7.5 5.35Z"
-        fill="currentColor"
-        opacity="0.72"
-      />
-      <path
-        d="M7.5 8.45C6.9 8.45 6.36 8.67 5.94 9.04C5.75 9.2 5.47 9.18 5.3 9L4.67 8.34C4.47 8.13 4.5 7.79 4.74 7.61C5.44 7.07 6.31 6.78 7.5 6.78C8.69 6.78 9.56 7.07 10.26 7.61C10.5 7.79 10.53 8.13 10.33 8.34L9.7 9C9.53 9.18 9.25 9.2 9.06 9.04C8.64 8.67 8.1 8.45 7.5 8.45Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function BatteryGlyph() {
-  return (
-    <span className="flex items-center gap-[1px]" aria-hidden="true">
-      <span className="h-[8px] w-[17px] rounded-[3px] border border-current p-[1px]">
-        <span className="block h-full w-[12px] rounded-[2px] bg-current" />
-      </span>
-      <span className="h-[4px] w-[1.5px] rounded-r-full bg-current" />
-    </span>
-  );
-}

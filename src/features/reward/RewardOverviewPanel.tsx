@@ -24,7 +24,7 @@ export function RewardOverviewPanel({
 
   return (
     <section className="rounded-[28px] bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-2 text-sm font-black text-lgred">
+      <div className="flex items-center gap-2 text-sm font-bold text-lgred">
         <Gift size={18} />
         전체 보상 확인
       </div>
@@ -33,8 +33,8 @@ export function RewardOverviewPanel({
       </p>
 
       <div className="mt-4 rounded-3xl bg-[#202632] p-5 text-white">
-        <p className="text-xs font-black text-white/60">이번 교환 확정 보상 크레딧</p>
-        <p className="mt-2 text-3xl font-black">{currentCredit.toLocaleString()}원</p>
+        <p className="text-xs font-semibold text-white/60">이번 교환 확정 보상 크레딧</p>
+        <p className="mt-2 text-3xl font-bold">{currentCredit.toLocaleString()}원</p>
         <p className="mt-2 text-xs font-semibold text-white/70">
           {swapRequest?.tracking.phase === "DELIVERED_TO_EWASTE_HUB"
             ? "e-waste 공장에 전달 완료 후 보상 상태가 갱신되었습니다."
@@ -52,7 +52,7 @@ export function RewardOverviewPanel({
       </div>
 
       <div className="mt-4 rounded-3xl bg-slate-50 p-4">
-        <div className="flex items-center gap-2 text-sm font-black text-ink">
+        <div className="flex items-center gap-2 text-sm font-bold text-ink">
           <ShieldCheck size={16} />
           이번 교환 보상 내역
         </div>
@@ -65,11 +65,11 @@ export function RewardOverviewPanel({
       </div>
 
       <div className="mt-4 rounded-3xl bg-slate-50 p-4">
-        <div className="flex items-center gap-2 text-sm font-black text-ink">
+        <div className="flex items-center gap-2 text-sm font-bold text-ink">
           <Truck size={16} />
           새 가전 연결 정보
         </div>
-        <p className="mt-2 text-base font-black text-ink">{selectedProduct?.productName ?? "선택된 제품 없음"}</p>
+        <p className="mt-2 text-base font-bold text-ink">{selectedProduct?.productName ?? "선택된 제품 없음"}</p>
         <p className="mt-1 text-xs font-semibold text-slate-500">
           {selectedProduct
             ? `${selectedProduct.productGrade} / ${selectedProduct.productPrice.toLocaleString()}원`
@@ -87,7 +87,7 @@ export function RewardOverviewPanel({
 
       <div className="mt-5 grid grid-cols-2 gap-2">
         <button
-          className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm font-black text-slate-700 disabled:bg-slate-100"
+          className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700 disabled:bg-slate-100"
           disabled={advancing}
           onClick={onAdvanceDelivery}
           type="button"
@@ -95,7 +95,7 @@ export function RewardOverviewPanel({
           {advancing ? "업데이트 중..." : "배송 상태 진행"}
         </button>
         <button
-          className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-lgred text-sm font-black text-white"
+          className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-lgred text-sm font-bold text-white"
           onClick={onOpenDelivery}
           type="button"
         >
@@ -120,9 +120,9 @@ function MetricCard({
     <div className="rounded-3xl bg-slate-50 p-4">
       <div className="flex items-center gap-2 text-slate-500">
         {icon}
-        <span className="text-xs font-black">{title}</span>
+        <span className="text-xs font-semibold">{title}</span>
       </div>
-      <p className="mt-3 text-lg font-black text-ink">{value}</p>
+      <p className="mt-3 text-lg font-bold text-ink">{value}</p>
     </div>
   );
 }
@@ -130,8 +130,8 @@ function MetricCard({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3">
-      <span className="text-xs font-black text-slate-400">{label}</span>
-      <strong className="text-sm font-black text-ink">{value}</strong>
+      <span className="text-xs font-semibold text-slate-500">{label}</span>
+      <strong className="text-sm font-bold text-ink">{value}</strong>
     </div>
   );
 }

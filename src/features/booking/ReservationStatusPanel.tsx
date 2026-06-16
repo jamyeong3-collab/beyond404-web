@@ -16,7 +16,7 @@ export function ReservationStatusPanel({
 }: ReservationStatusPanelProps) {
   return (
     <section className="flex h-full flex-col rounded-[28px] bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-2 text-sm font-black text-lgred">
+      <div className="flex items-center gap-2 text-sm font-bold text-lgred">
         <CalendarCheck size={18} />
         진행 중인 예약
       </div>
@@ -25,8 +25,8 @@ export function ReservationStatusPanel({
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-lgred text-white">
           <CalendarCheck size={30} />
         </div>
-        <p className="mt-4 text-xs font-black text-lgred">수거 예약이 등록되어 있습니다</p>
-        <h2 className="mt-2 text-2xl font-black text-ink">{reservationLabel || "예약 시간 확인 중"}</h2>
+        <p className="mt-4 text-xs font-semibold text-lgred">수거 예약이 등록되어 있습니다</p>
+        <h2 className="mt-2 text-2xl font-bold text-ink">{reservationLabel || "예약 시간 확인 중"}</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           예약 시간 전까지 여기서 수거 일정과 주소를 확인하고, 필요하면 예약을 변경하거나 취소할 수 있습니다.
         </p>
@@ -43,14 +43,14 @@ export function ReservationStatusPanel({
 
       <div className="mt-auto grid grid-cols-2 gap-2">
         <button
-          className="h-12 rounded-xl border border-lgred/20 bg-white text-sm font-black text-lgred"
+          className="h-12 rounded-xl border border-lgred/20 bg-white text-sm font-bold text-lgred"
           onClick={onChange}
           type="button"
         >
           예약 변경
         </button>
         <button
-          className="h-12 rounded-xl bg-slate-100 text-sm font-black text-slate-500"
+          className="h-12 rounded-xl bg-slate-100 text-sm font-bold text-slate-500"
           onClick={onCancel}
           type="button"
         >
@@ -76,7 +76,7 @@ function InfoRow({
         {icon}
       </span>
       <div>
-        <p className="text-sm font-black text-ink">{title}</p>
+        <p className="text-sm font-bold text-ink">{title}</p>
         <p className="mt-1 text-xs font-semibold text-slate-500">{description}</p>
       </div>
     </div>

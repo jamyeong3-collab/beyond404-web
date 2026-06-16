@@ -131,7 +131,7 @@ export function GoogleCanvasMap({
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRefs = useRef<google.maps.Marker[]>([]);
   const polylineRef = useRef<google.maps.Polyline | null>(null);
-  const { status } = useGoogleMaps(apiKey);
+  const { status, error } = useGoogleMaps(apiKey);
 
   const stableMarkers = useMemo(() => markers, [markers]);
   const stablePath = useMemo(() => path ?? [], [path]);
@@ -141,15 +141,30 @@ export function GoogleCanvasMap({
   }, [onStatusChange, status]);
 
   useEffect(() => {
-    if (status !== "ready" || !containerRef.current || mapRef.current) {
+    const container = containerRef.current;
+    if (status !== "ready" || !container || mapRef.current) {
       return;
     }
 
-    mapRef.current = new window.google.maps.Map(containerRef.current, {
-      ...baseMapOptions,
-      center,
-      zoom,
+    if (!(container instanceof HTMLElement) || !container.isConnected) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      if (!container.isConnected || mapRef.current || !window.google?.maps) {
+        return;
+      }
+
+      mapRef.current = new window.google.maps.Map(container, {
+        ...baseMapOptions,
+        center,
+        zoom,
+      });
     });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
   }, [center, status, zoom]);
 
   useEffect(() => {
@@ -206,6 +221,17 @@ export function GoogleCanvasMap({
       map.setZoom(zoom);
     }
   }, [center, fitBounds, stableMarkers, stablePath, status, zoom]);
+
+  if (status === "error") {
+    return (
+      <div className={`${className ?? ""} flex items-center justify-center bg-slate-100 p-5 text-center`}>
+        <div>
+          <p className="text-sm font-black text-ink">Google Maps 연결을 확인해주세요</p>
+          <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return <div className={className} ref={containerRef} />;
 }

@@ -13,13 +13,15 @@ import {
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 
-type ApplianceId = "washing_machine" | "refrigerator" | "air_conditioner" | "microwave" | "tv";
+type ApplianceId = "washing_machine" | "refrigerator" | "air_conditioner" | "microwave" | "tv" | "air_purifier";
 type CapturePhase = "consent" | "camera" | "recognizing" | "sticker-camera" | "sticker-recognizing" | "review";
 type CaptureTarget = "exterior" | "label";
 
 export type CaptureSubmission = {
   exteriorPhotoFileName: string;
+  exteriorPhotoUrl?: string;
   labelPhotoFileName: string;
+  labelPhotoUrl?: string;
   agreedToCreditPolicy: boolean;
   applianceType: ApplianceId;
   brand: string;
@@ -107,6 +109,14 @@ const recognitionByAppliance: Record<ApplianceId, RecognizedAppliance> = {
     exteriorCondition: "패널 외관 양호",
     confidence: 90,
   },
+  air_purifier: {
+    applianceType: "공기청정기",
+    brand: "LG",
+    modelName: "AS181DWFA",
+    estimatedAge: "2-4년",
+    exteriorCondition: "필터 커버 양호",
+    confidence: 82,
+  },
 };
 
 const METAL_PRICES = {
@@ -121,6 +131,7 @@ const METAL_RATIOS: Record<ApplianceId, { steel: number; aluminum: number; coppe
   air_conditioner: { steel: 0.42, aluminum: 0.16, copper: 0.055 },
   microwave: { steel: 0.54, aluminum: 0.03, copper: 0.012 },
   tv: { steel: 0.18, aluminum: 0.07, copper: 0.01 },
+  air_purifier: { steel: 0.22, aluminum: 0.06, copper: 0.02 },
 };
 
 const APPLIANCE_WEIGHTS: Record<ApplianceId, Record<string, number>> = {
@@ -129,6 +140,7 @@ const APPLIANCE_WEIGHTS: Record<ApplianceId, Record<string, number>> = {
   air_conditioner: { "소형": 18, "중형": 32, "대형": 48 },
   microwave: { "소형": 10, "중형": 13, "대형": 17 },
   tv: { "소형": 9, "중형": 16, "대형": 25 },
+  air_purifier: { "소형": 6, "중형": 9, "대형": 13 },
 };
 
 const MOCK_MODEL_WEIGHT_DB: Record<string, number> = {
@@ -269,6 +281,7 @@ const GUIDE_FRAME_PROFILES: Record<ApplianceId, { width: string; aspectRatio: st
   air_conditioner: { width: "min(68vw, 260px)", aspectRatio: "9 / 16", maxHeight: "52dvh" },
   microwave: { width: "min(82vw, 320px)", aspectRatio: "16 / 10", maxHeight: "34dvh" },
   tv: { width: "min(84vw, 330px)", aspectRatio: "16 / 9", maxHeight: "34dvh" },
+  air_purifier: { width: "min(58vw, 220px)", aspectRatio: "3 / 5", maxHeight: "52dvh" },
 };
 
 const LABEL_GUIDE_FRAME_STYLE: CSSProperties = {
@@ -680,7 +693,9 @@ export function CapturePanel({
         onAnalyze={() =>
           onAnalyze({
             exteriorPhotoFileName,
+            exteriorPhotoUrl: exteriorPreviewUrl,
             labelPhotoFileName,
+            labelPhotoUrl: labelPreviewUrl,
             agreedToCreditPolicy: creditPolicyAgreed && truthfulnessAgreed,
             applianceType: applianceId,
             brand: recognizedInfo.brand,
@@ -709,7 +724,7 @@ export function CapturePanel({
         </div>
 
         <div className="relative z-20 flex items-center justify-between px-6 pt-5">
-          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-black text-white/85">
+          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white/85">
             2 / 2
           </span>
           <button
@@ -722,8 +737,8 @@ export function CapturePanel({
         </div>
 
         <div className="relative z-10 flex h-[calc(100%-150px)] flex-col items-center justify-center gap-4 px-6">
-          <p className="text-center text-base font-black text-white">모델 라벨 스티커를 찍어주세요</p>
-          <p className="rounded-full bg-black/55 px-4 py-2 text-[11px] font-black text-white/90">
+          <p className="text-center text-base font-bold text-white">모델 라벨 스티커를 찍어주세요</p>
+          <p className="rounded-full bg-black/55 px-4 py-2 text-[11px] font-semibold text-white/90">
             글씨가 잘 보이도록 가까이 대주세요
           </p>
           <div
@@ -776,7 +791,7 @@ export function CapturePanel({
           </span>
         </div>
         <div className="text-center">
-          <p className="text-xl font-black">라벨 분석 중</p>
+          <p className="text-xl font-bold">라벨 분석 중</p>
           <p className="mt-2 text-sm font-semibold text-white/60">모델명과 스펙 정보를 읽어오고 있어요</p>
         </div>
       </section>
@@ -795,7 +810,7 @@ export function CapturePanel({
         <button className="text-sm font-semibold text-white" onClick={onCancel} type="button">
           취소
         </button>
-        <span className="rounded-full bg-black/35 px-3 py-1 text-xs font-black text-white/90">
+        <span className="rounded-full bg-black/35 px-3 py-1 text-xs font-semibold text-white/90">
           {target === "exterior" ? "1/2 외관 사진" : "2/2 뒷 라벨"}
         </span>
       </div>
@@ -806,7 +821,7 @@ export function CapturePanel({
           className="rounded-[20px] border-2 border-[#35ff77]"
           style={getGuideFrameStyle(applianceId, target)}
         />
-        <p className="rounded-full bg-black/55 px-4 py-2 text-center text-[11px] font-black text-white/90">
+        <p className="rounded-full bg-black/55 px-4 py-2 text-center text-[11px] font-semibold text-white/90">
           {targetDescriptions[target].title}
         </p>
       </div>
@@ -835,7 +850,7 @@ export function CapturePanel({
           </span>
         </button>
         <button
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-black/35 text-[10px] font-black text-white"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-black/35 text-[10px] font-semibold text-white"
           onClick={createDemoCapture}
           type="button"
         >
@@ -868,12 +883,12 @@ function ConsentView({
       <div className="phone-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-4 pt-16">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-black text-lgred">STEP 1. 촬영 전 확인</p>
-            <h2 className="mt-2 text-[24px] font-black leading-tight text-ink">
+            <p className="text-xs font-semibold text-lgred">STEP 1. 촬영 전 확인</p>
+            <h2 className="mt-2 text-[24px] font-bold leading-tight text-ink">
               진행하기 전에 확인해 주세요
             </h2>
           </div>
-          <button className="shrink-0 rounded-full px-2 py-1 text-sm font-black text-slate-400" onClick={onCancel} type="button">
+          <button className="shrink-0 rounded-full px-2 py-1 text-sm font-bold text-slate-500" onClick={onCancel} type="button">
             닫기
           </button>
         </div>
@@ -884,7 +899,7 @@ function ConsentView({
               <AlertTriangle size={18} />
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-black text-ink">보상 안내 및 동의</p>
+              <p className="text-sm font-bold text-ink">보상 안내 및 동의</p>
               <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
                 사진을 바탕으로 AI가 첫 견적을 계산해요. 수거 현장이나 자원 허브에서 확인한 실제 기기 상태에 따라 보상 크레딧이 조정될 수 있습니다.
               </p>
@@ -904,7 +919,7 @@ function ConsentView({
               <ShieldCheck size={18} />
             </span>
             <div className="min-w-0">
-              <p className="text-sm font-black text-ink">주의사항 및 동의</p>
+              <p className="text-sm font-bold text-ink">주의사항 및 동의</p>
               <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
                 소중한 가전의 모습을 있는 그대로 정직하게 담아주세요. 허위 정보나 고의적인 훼손이 확인될 경우 서비스 이용이 제한될 수 있습니다.
               </p>
@@ -924,7 +939,7 @@ function ConsentView({
             <ShieldCheck size={18} />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-black text-ink">촬영 가이드</p>
+            <p className="text-sm font-bold text-ink">촬영 가이드</p>
             <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
               가전의 전체 외관과 뒷면 라벨 스티커를 순서대로 촬영해 주세요. AI가 숨겨진 가치를 바로 분석해 드릴게요!
             </p>
@@ -935,7 +950,7 @@ function ConsentView({
 
       <div className="shrink-0 bg-cloud px-5 pb-5 pt-2">
       <button
-        className="h-14 w-full rounded-[16px] bg-lgred text-sm font-black text-white shadow-sm disabled:bg-slate-300 disabled:text-white"
+        className="h-14 w-full rounded-[16px] bg-lgred text-sm font-bold text-white shadow-sm disabled:bg-slate-300 disabled:text-white"
         disabled={!ready}
         onClick={onContinue}
         type="button"
@@ -968,13 +983,13 @@ function ConsentRow({
     >
       <span
         className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-          checked ? "bg-lgred text-white" : "bg-slate-100 text-slate-300"
+          checked ? "bg-lgred text-white" : "bg-slate-100 text-slate-400"
         }`}
       >
         <CheckCircle2 size={14} />
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-black text-ink">{title}</span>
+        <span className="block text-sm font-bold text-ink">{title}</span>
         {description ? (
           <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{description}</span>
         ) : null}
@@ -989,7 +1004,7 @@ function CameraFallback({ target }: { target: CaptureTarget }) {
       <div className="absolute inset-0 opacity-45 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:34px_34px]" />
       <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/25 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/25 to-transparent" />
-      <div className="absolute inset-0 flex items-center justify-center text-sm font-black text-white/70">
+      <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white/70">
         {targetDescriptions[target].demoLabel}
       </div>
     </div>
@@ -1003,8 +1018,8 @@ function RecognizingView({ applianceLabel }: { applianceLabel: string }) {
     <section className="flex min-h-full flex-col overflow-hidden bg-[#111318] text-white">
       <div className="flex items-start justify-between gap-4 px-5 pt-16">
         <div>
-          <p className="text-xs font-black text-white/55">STEP 1-2</p>
-          <h2 className="mt-1 text-xl font-black">VLM + OpenAI 분석 중</h2>
+          <p className="text-xs font-semibold text-white/55">STEP 1-2</p>
+          <h2 className="mt-1 text-xl font-bold">VLM + OpenAI 분석 중</h2>
         </div>
         <span className="shrink-0 rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white/80">
           {applianceLabel}
@@ -1096,8 +1111,8 @@ function ReviewView({
 
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-black text-lgred">STEP 1-3</p>
-          <h2 className="mt-1 text-xl font-black text-ink">AI 인식 결과 확인</h2>
+          <p className="text-xs font-semibold text-lgred">STEP 1-3</p>
+          <h2 className="mt-1 text-xl font-bold text-ink">AI 인식 결과 확인</h2>
         </div>
         <span className="shrink-0 rounded-full bg-lgred/10 px-3 py-1 text-xs font-bold text-lgred">
           {applianceLabel}
@@ -1105,8 +1120,8 @@ function ReviewView({
       </div>
 
       <div className="mt-4 flex items-center justify-between">
-        <p className="text-sm font-black text-ink">방금 촬영한 사진</p>
-        <span className="text-[11px] font-bold text-slate-400">탭하면 전체보기</span>
+        <p className="text-sm font-bold text-ink">방금 촬영한 사진</p>
+        <span className="text-[11px] font-bold text-slate-500">탭하면 전체보기</span>
       </div>
 
       <div
@@ -1134,7 +1149,7 @@ function ReviewView({
             <ShieldCheck size={18} />
           </span>
           <div>
-            <p className="text-sm font-black text-ink">정보 확인 후 감정 진행</p>
+            <p className="text-sm font-bold text-ink">정보 확인 후 감정 진행</p>
             <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
               AI가 분석한 결과예요. 틀린 내용은 직접 수정할 수 있어요.
             </p>
@@ -1152,8 +1167,8 @@ function ReviewView({
 
       <div className="mt-4 rounded-2xl bg-cloud p-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-black text-slate-500">인식 신뢰도</span>
-          <strong className="text-sm font-black text-lgred">{recognizedInfo.confidence}%</strong>
+          <span className="text-xs font-semibold text-slate-500">인식 신뢰도</span>
+          <strong className="text-sm font-bold text-lgred">{recognizedInfo.confidence}%</strong>
         </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
           <span
@@ -1168,10 +1183,10 @@ function ReviewView({
           {/* 최종 크레딧 */}
           <div className="flex items-center justify-between px-5 py-4">
             <div>
-              <p className="text-[11px] font-black text-white/65">예상 최종 크레딧</p>
-              <p className="mt-0.5 text-3xl font-black text-white">
+              <p className="text-[11px] font-semibold text-white/65">예상 최종 크레딧</p>
+              <p className="mt-0.5 text-3xl font-bold text-white">
                 {credit.total.toLocaleString("ko-KR")}
-                <span className="ml-1 text-lg font-black text-white/80">원</span>
+                <span className="ml-1 text-lg font-bold text-white/80">원</span>
               </p>
             </div>
             <div className="text-right">
@@ -1183,13 +1198,13 @@ function ReviewView({
           <div className="space-y-1.5 bg-black/15 px-5 py-3">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-white/60">스크랩 가치</span>
-              <span className="text-[11px] font-black text-white/80">+{credit.scrap.toLocaleString("ko-KR")}원</span>
+              <span className="text-[11px] font-semibold text-white/80">+{credit.scrap.toLocaleString("ko-KR")}원</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-semibold text-white/60">
                 신제품 연계 ({(credit.ratio * 100).toFixed(0)}%)
               </span>
-              <span className="text-[11px] font-black text-white/80">+{credit.bonus.toLocaleString("ko-KR")}원</span>
+              <span className="text-[11px] font-semibold text-white/80">+{credit.bonus.toLocaleString("ko-KR")}원</span>
             </div>
             <div className="mt-1 border-t border-white/15 pt-1.5 flex items-center justify-between">
               <span className="text-[10px] font-semibold text-white/40">
@@ -1198,7 +1213,7 @@ function ReviewView({
               <span className="text-[10px] font-semibold text-white/40">상한 {(CAP_RATIO * 100).toFixed(0)}%</span>
             </div>
             <div className="mt-1 flex items-center gap-1">
-              <span className={`text-[10px] font-black ${credit.weightFromDB ? "text-green-300" : "text-white/35"}`}>
+              <span className={`text-[10px] font-semibold ${credit.weightFromDB ? "text-green-300" : "text-white/35"}`}>
                 {credit.weightFromDB ? "✓ 모델 무게 적용" : "크기 등급 평균값 적용"}
               </span>
             </div>
@@ -1208,14 +1223,14 @@ function ReviewView({
 
       <div className="sticky bottom-0 -mx-5 mt-5 grid grid-cols-2 gap-2 bg-white/95 px-5 pb-5 pt-3 shadow-[0_-14px_28px_rgba(255,255,255,.92)]">
         <button
-          className="h-12 rounded-xl border border-lgred/20 bg-white text-sm font-black text-lgred"
+          className="h-12 rounded-xl border border-lgred/20 bg-white text-sm font-bold text-lgred"
           onClick={onRetake}
           type="button"
         >
           다시 촬영
         </button>
         <button
-          className="h-12 rounded-xl bg-lgred px-2 text-[13px] font-black text-white disabled:bg-slate-300"
+          className="h-12 rounded-xl bg-lgred px-2 text-[13px] font-bold text-white disabled:bg-slate-300"
           disabled={!ready}
           onClick={onAnalyze}
           type="button"
@@ -1246,7 +1261,7 @@ function PhotoCard({
         </div>
       )}
       <div className="bg-white px-3 py-3">
-        <p className="text-xs font-black text-slate-500">{title}</p>
+        <p className="text-xs font-semibold text-slate-500">{title}</p>
         <p className="mt-1 truncate text-xs font-semibold text-ink">{fileName || "미촬영"}</p>
       </div>
     </div>
@@ -1264,9 +1279,9 @@ function InfoInput({
 }) {
   return (
     <label className="block">
-      <span className="text-xs font-black text-slate-500">{label}</span>
+      <span className="text-xs font-semibold text-slate-500">{label}</span>
       <input
-        className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-ink outline-none focus:border-lgred"
+        className="mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-ink outline-none focus:border-lgred"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -1279,8 +1294,8 @@ function AnalyzingView({ applianceLabel }: { applianceLabel: string }) {
     <section className="flex min-h-full flex-col overflow-hidden bg-[#111318] text-white shadow-sm">
       <div className="flex items-start justify-between gap-4 px-5 pt-16">
         <div>
-          <p className="text-xs font-black text-white/55">STEP 2</p>
-          <h2 className="mt-1 text-xl font-black">감정 중</h2>
+          <p className="text-xs font-semibold text-white/55">STEP 2</p>
+          <h2 className="mt-1 text-xl font-bold">감정 중</h2>
         </div>
         <span className="shrink-0 rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white/80">
           {applianceLabel}
@@ -1297,7 +1312,7 @@ function AnalyzingView({ applianceLabel }: { applianceLabel: string }) {
           </span>
         </div>
         <div className="text-center">
-          <p className="text-lg font-black">원자재 스크랩 가치와 재사용 가능 부품을 분석 중입니다</p>
+          <p className="text-lg font-bold">원자재 스크랩 가치와 재사용 가능 부품을 분석 중입니다</p>
           <p className="mt-2 text-sm font-semibold text-white/60">
             촬영 사진, 라벨 정보, 외관 상태를 바탕으로 예상 보상가를 계산합니다.
           </p>

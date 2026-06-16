@@ -15,7 +15,7 @@ export function DeliveryTrackingPanel({ swapRequest }: DeliveryTrackingPanelProp
 
   return (
     <section className="rounded-[28px] bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-2 text-sm font-black text-lgred">
+      <div className="flex items-center gap-2 text-sm font-bold text-lgred">
         <Truck size={18} />
         새 가전 배송상황
       </div>
@@ -24,8 +24,8 @@ export function DeliveryTrackingPanel({ swapRequest }: DeliveryTrackingPanelProp
       </p>
 
       <div className="mt-4 rounded-3xl bg-[#202632] p-5 text-white">
-        <p className="text-xs font-black text-white/60">배송 대상 제품</p>
-        <p className="mt-2 text-2xl font-black">{selectedProduct?.productName ?? "선택된 제품 없음"}</p>
+        <p className="text-xs font-semibold text-white/60">배송 대상 제품</p>
+        <p className="mt-2 text-2xl font-bold">{selectedProduct?.productName ?? "선택된 제품 없음"}</p>
         <p className="mt-2 text-xs font-semibold text-white/70">{tracking?.etaMessage ?? "배송 준비 중"}</p>
       </div>
 
@@ -45,10 +45,10 @@ export function DeliveryTrackingPanel({ swapRequest }: DeliveryTrackingPanelProp
                   ) : null}
                 </div>
                 <div>
-                  <p className={`text-sm font-black ${stage.completed ? "text-ink" : "text-slate-400"}`}>{stage.label}</p>
+                  <p className={`text-sm font-bold ${stage.completed ? "text-ink" : "text-slate-500"}`}>{stage.label}</p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">{helperText(stage.stageKey)}</p>
                 </div>
-                <p className={`text-right text-xs font-semibold ${stage.completed ? "text-slate-500" : "text-slate-300"}`}>
+                <p className={`text-right text-xs font-semibold ${stage.completed ? "text-slate-500" : "text-slate-400"}`}>
                   {stage.completedAt ? formatTime(stage.completedAt) : "--:--"}
                 </p>
               </div>
@@ -119,9 +119,9 @@ function StatusCard({
     <div className="rounded-3xl bg-slate-50 p-4">
       <div className="flex items-center gap-2 text-slate-500">
         {icon}
-        <span className="text-xs font-black">{title}</span>
+        <span className="text-xs font-semibold">{title}</span>
       </div>
-      <p className="mt-2 text-lg font-black text-ink">{value}</p>
+      <p className="mt-2 text-lg font-bold text-ink">{value}</p>
     </div>
   );
 }

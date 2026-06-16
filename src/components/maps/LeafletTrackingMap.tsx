@@ -112,31 +112,6 @@ function createMarkerLabel(label?: string) {
   };
 }
 
-function MapResizer() {
-  const map = useMap();
-
-  useEffect(() => {
-    const container = map.getContainer();
-    const refresh = () => {
-      window.requestAnimationFrame(() => {
-        map.invalidateSize();
-      });
-    };
-
-    refresh();
-    const timer = window.setTimeout(refresh, 180);
-    const observer = new ResizeObserver(() => refresh());
-    observer.observe(container);
-
-    return () => {
-      window.clearTimeout(timer);
-      observer.disconnect();
-    };
-  }, [map]);
-
-  return null;
-}
-
 export function LeafletTrackingMap({
   center,
   markers,
@@ -164,36 +139,51 @@ export function LeafletTrackingMap({
 
     loadGoogleMaps()
       .then((googleApi) => {
-        if (!mounted || !containerRef.current || mapRef.current) {
+        const container = containerRef.current;
+        if (!mounted || !container || mapRef.current) {
           return;
         }
 
-        const map = new googleApi.maps.Map(containerRef.current, {
-          center,
-          clickableIcons: true,
-          disableDefaultUI: false,
-          fullscreenControl: false,
-          gestureHandling: "greedy",
-          mapTypeControl: false,
-          maxZoom,
-          minZoom,
-          scaleControl: true,
-          streetViewControl: false,
-          zoom,
-          zoomControl: true,
+        if (!(container instanceof HTMLElement) || !container.isConnected) {
+          return;
+        }
+
+        const frameId = window.requestAnimationFrame(() => {
+          if (!mounted || !container.isConnected || mapRef.current) {
+            return;
+          }
+
+          const map = new googleApi.maps.Map(container, {
+            center,
+            clickableIcons: true,
+            disableDefaultUI: false,
+            fullscreenControl: false,
+            gestureHandling: "greedy",
+            mapTypeControl: false,
+            maxZoom,
+            minZoom,
+            scaleControl: true,
+            streetViewControl: false,
+            zoom,
+            zoomControl: true,
+          });
+
+          mapRef.current = map;
+          mapInteractionListenersRef.current = [
+            map.addListener("dragstart", () => {
+              userInteractedRef.current = true;
+            }),
+            map.addListener("zoom_changed", () => {
+              if (!autoAdjustingRef.current && initializedRef.current) {
+                userInteractedRef.current = true;
+              }
+            }),
+          ];
         });
 
-        mapRef.current = map;
-        mapInteractionListenersRef.current = [
-          map.addListener("dragstart", () => {
-            userInteractedRef.current = true;
-          }),
-          map.addListener("zoom_changed", () => {
-            if (!autoAdjustingRef.current && initializedRef.current) {
-              userInteractedRef.current = true;
-            }
-          }),
-        ];
+        mapInteractionListenersRef.current.push({
+          remove: () => window.cancelAnimationFrame(frameId),
+        });
       })
       .catch((error: Error) => {
         if (mounted) {
@@ -319,7 +309,7 @@ export function LeafletTrackingMap({
     return (
       <div className={`${className ?? ""} flex items-center justify-center bg-slate-100 p-5 text-center`}>
         <div>
-          <p className="text-sm font-black text-ink">Google Maps 연결이 필요합니다</p>
+          <p className="text-sm font-bold text-ink">Google Maps 연결이 필요합니다</p>
           <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
             {missingKey
               ? "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY 환경변수를 설정한 뒤 다시 빌드해주세요."

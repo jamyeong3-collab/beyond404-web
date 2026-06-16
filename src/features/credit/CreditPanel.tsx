@@ -63,7 +63,7 @@ export function CreditPanel({
 
   return (
     <section className="flex min-h-full flex-col rounded-[28px] bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-2 text-sm font-black text-lgred">
+      <div className="flex items-center gap-2 text-sm font-bold text-lgred">
         <BadgeCheck size={18} />
         STEP 5. 최종 검수 및 크레딧
       </div>
@@ -110,8 +110,8 @@ function PendingReviewView({
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-lgred/10 text-lgred">
           {loading ? <Loader2 className="animate-spin" size={30} /> : <ClipboardCheck size={30} />}
         </div>
-        <p className="mt-4 text-xs font-black text-lgred">최종 검수 중</p>
-        <h2 className="mt-2 text-2xl font-black text-ink">수거품을 확인하고 있어요</h2>
+        <p className="mt-4 text-xs font-semibold text-lgred">최종 검수 중</p>
+        <h2 className="mt-2 text-2xl font-bold text-ink">수거품을 확인하고 있어요</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           수거 후 추가 검수가 진행 중입니다. 데모에서는 10초 뒤 ThinQ 홈에 검수 완료 알림이 표시됩니다.
         </p>
@@ -123,7 +123,7 @@ function PendingReviewView({
         <ReviewRow icon={<Bell size={17} />} title="ThinQ 알림 발송 예정" description="검수 완료 후 감정결과를 안내합니다." />
       </div>
 
-      <button className="mt-auto h-12 w-full rounded-xl bg-lgred text-sm font-black text-white" onClick={onReturnHome}>
+      <button className="mt-auto h-12 w-full rounded-xl bg-lgred text-sm font-bold text-white" onClick={onReturnHome}>
         <span className="inline-flex items-center gap-2">
           <Home size={17} />
           ThinQ 홈으로 돌아가기
@@ -146,8 +146,8 @@ function ReviewReadyView({
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white text-lgred">
           <Bell size={30} />
         </div>
-        <p className="mt-4 text-xs font-black text-lgred">검수 완료</p>
-        <h2 className="mt-2 text-2xl font-black text-ink">감정결과가 준비됐어요</h2>
+        <p className="mt-4 text-xs font-semibold text-lgred">검수 완료</p>
+        <h2 className="mt-2 text-2xl font-bold text-ink">감정결과가 준비됐어요</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           최종 검수 결과와 확정 크레딧을 확인할 수 있습니다.
         </p>
@@ -160,7 +160,7 @@ function ReviewReadyView({
       </div>
 
       <button
-        className="mt-auto h-12 w-full rounded-xl bg-lgred text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+        className="mt-auto h-12 w-full rounded-xl bg-lgred text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-slate-300"
         disabled={loading}
         onClick={onFinalize}
       >
@@ -177,8 +177,8 @@ function ReReviewPendingView({ onReturnHome }: { onReturnHome: () => void }) {
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-lgred/10 text-lgred">
           <Loader2 className="animate-spin" size={30} />
         </div>
-        <p className="mt-4 text-xs font-black text-lgred">재검수 중</p>
-        <h2 className="mt-2 text-2xl font-black text-ink">요청 내용을 다시 확인하고 있어요</h2>
+        <p className="mt-4 text-xs font-semibold text-lgred">재검수 중</p>
+        <h2 className="mt-2 text-2xl font-bold text-ink">요청 내용을 다시 확인하고 있어요</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           제출한 사유를 기준으로 감정 결과를 다시 확인합니다. 데모에서는 5초 뒤 ThinQ 홈에 완료 알림이 표시됩니다.
         </p>
@@ -190,7 +190,7 @@ function ReReviewPendingView({ onReturnHome }: { onReturnHome: () => void }) {
         <ReviewRow icon={<Bell size={17} />} title="완료 알림 예정" description="재검수가 끝나면 ThinQ 홈에서 바로 확인할 수 있어요." />
       </div>
 
-      <button className="mt-auto h-12 w-full rounded-xl bg-lgred text-sm font-black text-white" onClick={onReturnHome}>
+      <button className="mt-auto h-12 w-full rounded-xl bg-lgred text-sm font-bold text-white" onClick={onReturnHome}>
         <span className="inline-flex items-center gap-2">
           <Home size={17} />
           ThinQ 홈으로 돌아가기
@@ -207,8 +207,8 @@ function ReReviewReadyView({ onOpenResult }: { onOpenResult: () => void }) {
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white text-lgred">
           <CheckCircle2 size={32} />
         </div>
-        <p className="mt-4 text-xs font-black text-lgred">재검수 완료</p>
-        <h2 className="mt-2 text-2xl font-black text-ink">재검수 결과가 준비됐어요</h2>
+        <p className="mt-4 text-xs font-semibold text-lgred">재검수 완료</p>
+        <h2 className="mt-2 text-2xl font-bold text-ink">재검수 결과가 준비됐어요</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           요청 사유를 반영해 감정 결과를 다시 확인했습니다.
         </p>
@@ -220,7 +220,7 @@ function ReReviewReadyView({ onOpenResult }: { onOpenResult: () => void }) {
         <ReviewRow done icon={<CreditCard size={17} />} title="최종 크레딧 유지" description="확정된 크레딧 결과를 다시 안내합니다." />
       </div>
 
-      <button className="mt-auto h-12 w-full rounded-xl bg-lgred text-sm font-black text-white" onClick={onOpenResult}>
+      <button className="mt-auto h-12 w-full rounded-xl bg-lgred text-sm font-bold text-white" onClick={onOpenResult}>
         재검수 결과 확인하기
       </button>
     </>
@@ -253,8 +253,8 @@ function FinalCreditView({
             </div>
           </div>
           <div className="p-3">
-            <p className="text-xs font-black text-lgred">최종 감정가</p>
-            <p className="mt-1 text-3xl font-black leading-none text-ink">₹{amount.toLocaleString()}</p>
+            <p className="text-xs font-semibold text-lgred">최종 감정가</p>
+            <p className="mt-1 text-3xl font-bold leading-none text-ink">₹{amount.toLocaleString()}</p>
             <p className="mt-2 text-xs leading-4 text-slate-500">
               추가 검수 결과를 기준으로 산정된 확정 금액입니다.
             </p>
@@ -270,12 +270,12 @@ function FinalCreditView({
       </div>
 
       <div className={`mt-3 grid gap-2 ${allowReReview ? "grid-cols-2" : "grid-cols-1"}`}>
-        <button className="h-12 rounded-xl bg-lgred text-sm font-black text-white" onClick={onIssueCredit}>
+        <button className="h-12 rounded-xl bg-lgred text-sm font-bold text-white" onClick={onIssueCredit}>
           크레딧 받기
         </button>
         {allowReReview ? (
           <button
-            className="h-12 rounded-xl border border-lgred/20 bg-white text-sm font-black text-lgred"
+            className="h-12 rounded-xl border border-lgred/20 bg-white text-sm font-bold text-lgred"
             onClick={onReReview}
           >
             재검수 요청
@@ -301,8 +301,8 @@ function CreditIssuedView({
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white text-lgred">
           <CreditCard size={32} />
         </div>
-        <p className="mt-4 text-xs font-black text-lgred">크레딧 발급 완료</p>
-        <h2 className="mt-2 text-2xl font-black text-ink">₹{amount.toLocaleString()} 크레딧을 받았어요</h2>
+        <p className="mt-4 text-xs font-semibold text-lgred">크레딧 발급 완료</p>
+        <h2 className="mt-2 text-2xl font-bold text-ink">₹{amount.toLocaleString()} 크레딧을 받았어요</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           발급된 크레딧은 ThinQ 안에서 새 LG 가전을 구매하거나 교체 예약을 진행할 때 사용할 수 있습니다.
         </p>
@@ -331,7 +331,7 @@ function CreditIssuedView({
 
       <div className="mt-auto grid grid-cols-2 gap-2">
         <button
-          className="h-12 rounded-xl border border-lgred/20 bg-white text-sm font-black text-lgred"
+          className="h-12 rounded-xl border border-lgred/20 bg-white text-sm font-bold text-lgred"
           onClick={onReturnHome}
         >
           <span className="inline-flex items-center gap-2">
@@ -339,7 +339,7 @@ function CreditIssuedView({
             홈으로
           </span>
         </button>
-        <button className="h-12 rounded-xl bg-lgred text-sm font-black text-white" onClick={onUseCredit}>
+        <button className="h-12 rounded-xl bg-lgred text-sm font-bold text-white" onClick={onUseCredit}>
           크레딧으로 구매하기
         </button>
       </div>
@@ -358,7 +358,7 @@ function ReReviewForm({
 
   return (
     <>
-      <div className="flex items-center gap-2 text-sm font-black text-lgred">
+      <div className="flex items-center gap-2 text-sm font-bold text-lgred">
         <AlertCircle size={18} />
         재검수 요청
       </div>
@@ -367,7 +367,7 @@ function ReReviewForm({
       </p>
 
       <div className="mt-5 rounded-2xl bg-slate-50 p-4">
-        <div className="mb-2 flex items-center gap-2 text-sm font-black text-ink">
+        <div className="mb-2 flex items-center gap-2 text-sm font-bold text-ink">
           <MessageSquare size={17} />
           재검수 사유
         </div>
@@ -380,7 +380,7 @@ function ReReviewForm({
       </div>
 
       <button
-        className="mt-auto h-12 rounded-xl bg-lgred text-sm font-black text-white disabled:bg-slate-300"
+        className="mt-auto h-12 rounded-xl bg-lgred text-sm font-bold text-white disabled:bg-slate-300"
         disabled={reason.trim().length < 5}
         onClick={onSubmit}
       >
@@ -389,7 +389,7 @@ function ReReviewForm({
           재검수 요청하기
         </span>
       </button>
-      <button className="mt-2 h-11 rounded-xl bg-slate-100 text-sm font-black text-slate-500" onClick={onBack}>
+      <button className="mt-2 h-11 rounded-xl bg-slate-100 text-sm font-bold text-slate-500" onClick={onBack}>
         취소
       </button>
     </>
@@ -399,7 +399,7 @@ function ReReviewForm({
 function ValuationReason({ title, description }: { title: string; description: string }) {
   return (
     <div className="rounded-2xl bg-slate-50 p-3">
-      <p className="text-sm font-black text-ink">{title}</p>
+      <p className="text-sm font-bold text-ink">{title}</p>
       <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
     </div>
   );
@@ -426,7 +426,7 @@ function ReviewRow({
         {icon}
       </span>
       <div>
-        <p className="text-sm font-black text-ink">{title}</p>
+        <p className="text-sm font-bold text-ink">{title}</p>
         <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
       </div>
     </div>

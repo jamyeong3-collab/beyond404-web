@@ -8,3 +8,6 @@ dev-server.log
 .env.local
 .env.*.local
 certificates/
+
+# TS incremental build cache
+tsconfig.tsbuildinfo

@@ -91,6 +91,18 @@ export type BookingPayload = PickupLocationPayload & {
   bookingTime?: string;
 };
 
+export type BookingAvailabilitySlot = {
+  time: string;
+  available: boolean;
+  reservedCount: number;
+  capacity: number;
+};
+
+export type BookingAvailabilityResponse = {
+  date: string;
+  slots: BookingAvailabilitySlot[];
+};
+
 export function createSwapRequest(applianceType = "washing_machine") {
   return createSwapRequestForUser(
     {
@@ -198,6 +210,12 @@ export function confirmBooking(id: number, booking: BookingPayload) {
       pickupLng: booking.pickupLng,
     }),
   });
+}
+
+export function getBookingAvailability(date: string) {
+  return request<BookingAvailabilityResponse>(
+    `/api/swap-requests/booking-availability?date=${encodeURIComponent(date)}`,
+  );
 }
 
 export function completeFinalValuation(id: number) {

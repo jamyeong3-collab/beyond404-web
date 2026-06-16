@@ -27,8 +27,8 @@ export function AnalyzingPanel({ applianceLabel, error, onRetry, onRetake }: Ana
       </div>
 
       <div className="mt-8 text-center">
-        <p className="text-xs font-black text-lgred">STEP 2</p>
-        <h2 className="mt-2 text-3xl font-black">
+        <p className="text-xs font-semibold text-lgred">STEP 2</p>
+        <h2 className="mt-2 text-3xl font-bold">
           {hasError ? "감정 연결을 확인해주세요" : "감정중..."}
         </h2>
         <p className="mx-auto mt-4 max-w-[280px] text-sm font-semibold leading-6 text-white/70">
@@ -47,13 +47,13 @@ export function AnalyzingPanel({ applianceLabel, error, onRetry, onRetake }: Ana
       {hasError ? (
         <div className="mt-5 grid grid-cols-2 gap-2">
           <button
-            className="h-12 rounded-xl border border-white/20 bg-white/10 text-sm font-black text-white"
+            className="h-12 rounded-xl border border-white/20 bg-white/10 text-sm font-bold text-white"
             onClick={onRetake}
             type="button"
           >
             다시 촬영하기
           </button>
-          <button className="h-12 rounded-xl bg-lgred text-sm font-black text-white" onClick={onRetry} type="button">
+          <button className="h-12 rounded-xl bg-lgred text-sm font-bold text-white" onClick={onRetry} type="button">
             다시 감정하기
           </button>
         </div>
