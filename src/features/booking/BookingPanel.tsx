@@ -3,9 +3,12 @@
 import { getBookingAvailability } from "@/lib/api";
 import type { BookingAvailabilitySlot } from "@/lib/api";
 import type { SwapRequest } from "@/types/swap";
-import { CalendarCheck, Crosshair, Loader2, MapPin, Search } from "lucide-react";
+import { Calendar3DIcon } from "@/components/Calendar3DIcon";
+import { Service3DIcon } from "@/components/Service3DIcon";
+import { Loader2, X } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 type BookingPanelProps = {
   swapRequest: SwapRequest | null;
@@ -183,14 +186,14 @@ const bookingCopies: Record<BookingPurpose, BookingCopy> = {
     manualDescription: "현재 위치를 불러오거나 주소 검색 결과를 선택해 설치 위치를 지정할 수 있어요.",
     manualButtonLabel: "현재 위치로 지정할게요",
     manualAddressPlaceholder: "서울특별시 중구 세종대로 110",
-    manualDetailPlaceholder: "설치 공간과 기존 제품 위치를 입력해 주세요",
+    manualDetailPlaceholder: "상세 주소를 입력해주세요",
     manualSecureError: "현재 위치는 HTTPS 또는 localhost 환경에서만 사용할 수 있어요.",
     manualFetchError: "현재 위치를 가져오지 못했어요. 위치 권한을 허용하거나 설치 주소를 직접 입력해 주세요.",
   },
 };
 
-const timeSlots = Array.from({ length: 19 }, (_, index) => {
-  const totalMinutes = 9 * 60 + index * 30;
+const timeSlots = Array.from({ length: 55 }, (_, index) => {
+  const totalMinutes = 9 * 60 + index * 10;
   const hour = Math.floor(totalMinutes / 60);
   const minute = totalMinutes % 60;
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
@@ -279,11 +282,18 @@ export function BookingPanel({ swapRequest, loading, bookingPurpose = "pickup", 
   const [mode, setMode] = useState<BookingMode>("schedule");
   const canBook = Boolean(swapRequest && swapRequest.preValuation.maxEstimatedValue > 0);
   const copy = bookingCopies[bookingPurpose];
+  const allowInstantCall = bookingPurpose !== "installation";
+
+  useEffect(() => {
+    if (!allowInstantCall) {
+      setMode("schedule");
+    }
+  }, [allowInstantCall]);
 
   return (
     <section className="rounded-[28px] bg-white p-4 shadow-sm">
       <div className="flex items-center gap-2 text-[13px] font-bold text-lgred">
-        <CalendarCheck size={18} />
+        <Calendar3DIcon className="h-6 w-6 shrink-0" />
         {copy.title}
       </div>
       <p className="mt-1 text-xs leading-5 text-slate-500">
@@ -295,14 +305,22 @@ export function BookingPanel({ swapRequest, loading, bookingPurpose = "pickup", 
         </p>
       ) : null}
 
-      <div className="mt-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
-        <ModeButton active={mode === "schedule"} label={copy.scheduleModeLabel} onClick={() => setMode("schedule")} />
-        <ModeButton active={mode === "call"} label={copy.callModeLabel} onClick={() => setMode("call")} />
-      </div>
+      {allowInstantCall ? (
+        <div className="mt-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
+          <ModeButton active={mode === "schedule"} label={copy.scheduleModeLabel} onClick={() => setMode("schedule")} />
+          <ModeButton active={mode === "call"} label={copy.callModeLabel} onClick={() => setMode("call")} />
+        </div>
+      ) : null}
 
       <div className="mt-4">
-        {mode === "schedule" ? (
-          <ScheduleBooking canBook={canBook} copy={copy} loading={loading} onBooking={onBooking} />
+        {!allowInstantCall || mode === "schedule" ? (
+          <ScheduleBooking
+            canBook={canBook}
+            copy={copy}
+            hideManualHeader={bookingPurpose === "installation"}
+            loading={loading}
+            onBooking={onBooking}
+          />
         ) : (
           <InstantCallBooking canBook={canBook} copy={copy} loading={loading} onBooking={onBooking} />
         )}
@@ -342,11 +360,13 @@ function ModeButton({
 function ScheduleBooking({
   canBook,
   copy,
+  hideManualHeader = false,
   loading,
   onBooking,
 }: {
   canBook: boolean;
   copy: BookingCopy;
+  hideManualHeader?: boolean;
   loading: boolean;
   onBooking: (booking: BookingSelection) => void;
 }) {
@@ -359,6 +379,7 @@ function ScheduleBooking({
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityError, setAvailabilityError] = useState("");
   const [pinLocating, setPinLocating] = useState(false);
+  const [timePickerOpen, setTimePickerOpen] = useState(false);
 
   const handleUseCurrentLocation = async () => {
     if (!isSecureGpsAvailable()) {
@@ -445,10 +466,42 @@ function ScheduleBooking({
         address={pickupAddress}
         copy={copy}
         detailAddress={detailAddress}
+        hideHeader={hideManualHeader}
         onAddressChange={setPickupAddress}
         onCoordinateChange={setPickupCoords}
         onDetailAddressChange={setDetailAddress}
       />
+
+      <button
+        className="mt-3 flex min-h-16 w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition active:scale-[0.99]"
+        onClick={() => setTimePickerOpen(true)}
+        type="button"
+      >
+        <Calendar3DIcon className="h-9 w-9 shrink-0" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13px] font-bold text-ink">
+            {hideManualHeader ? "설치 희망 시간 선택" : "수거 희망 시간 선택"}
+          </span>
+          <span className="mt-1 block truncate text-xs font-semibold text-slate-500">
+            {formatDateLabel(selectedDate)} · {selectedTime}
+          </span>
+        </span>
+        <span className="text-[12px] font-bold text-lgred">변경</span>
+      </button>
+
+      {timePickerOpen ? (
+        <ScheduleTimeSheet
+          availabilityByTime={availabilityByTime}
+          availabilityError={availabilityError}
+          availabilityLoading={availabilityLoading}
+          copy={copy}
+          onClose={() => setTimePickerOpen(false)}
+          onDateChange={setSelectedDate}
+          onTimeChange={setSelectedTime}
+          selectedDate={selectedDate}
+          selectedTime={selectedTime}
+        />
+      ) : null}
 
       <button
         className="mt-4 h-12 w-full rounded-2xl bg-[#202632] text-[13px] font-bold text-white disabled:bg-slate-300"
@@ -471,6 +524,255 @@ function ScheduleBooking({
       </button>
     </div>
   );
+}
+
+function ScheduleTimeSheet({
+  availabilityByTime,
+  availabilityError,
+  availabilityLoading,
+  copy,
+  onClose,
+  onDateChange,
+  onTimeChange,
+  selectedDate,
+  selectedTime,
+}: {
+  availabilityByTime: Map<string, BookingAvailabilitySlot>;
+  availabilityError: string;
+  availabilityLoading: boolean;
+  copy: BookingCopy;
+  onClose: () => void;
+  onDateChange: (date: string) => void;
+  onTimeChange: (time: string) => void;
+  selectedDate: string;
+  selectedTime: string;
+}) {
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const selectedDateParts = parseDateParts(selectedDate);
+  const selectedHour = selectedTime.slice(0, 2);
+  const selectedMinute = selectedTime.slice(3, 5);
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 3 }, (_, index) => currentYear + index);
+  const months = Array.from({ length: 12 }, (_, index) => index + 1);
+  const days = Array.from(
+    { length: daysInMonth(selectedDateParts.year, selectedDateParts.month) },
+    (_, index) => index + 1,
+  );
+  const hours = Array.from(new Set(timeSlots.map((time) => time.slice(0, 2))));
+  const minutes = ["00", "10", "20", "30", "40", "50"];
+
+  const isTimeUnavailable = (time: string) => {
+    if (!timeSlots.includes(time)) return true;
+    const minute = Number(time.slice(3, 5));
+    const availabilityMinute = minute < 30 ? "00" : "30";
+    const availabilityKey = `${time.slice(0, 2)}:${availabilityMinute}`;
+    const slot = availabilityByTime.get(availabilityKey);
+    return availabilityLoading || (slot ? !slot.available : false);
+  };
+
+  const setDatePart = (nextPart: Partial<typeof selectedDateParts>) => {
+    const nextYear = nextPart.year ?? selectedDateParts.year;
+    const nextMonth = nextPart.month ?? selectedDateParts.month;
+    const maxDay = daysInMonth(nextYear, nextMonth);
+    const nextDay = Math.min(nextPart.day ?? selectedDateParts.day, maxDay);
+    onDateChange(formatDateValue(nextYear, nextMonth, nextDay));
+  };
+
+  const selectHour = (hour: string) => {
+    const preferred = `${hour}:${selectedMinute}`;
+    if (!isTimeUnavailable(preferred)) {
+      onTimeChange(preferred);
+      return;
+    }
+
+    const nextAvailable = timeSlots.find((time) => time.startsWith(`${hour}:`) && !isTimeUnavailable(time));
+    if (nextAvailable) {
+      onTimeChange(nextAvailable);
+    }
+  };
+
+  const selectMinute = (minute: string) => {
+    const nextTime = `${selectedHour}:${minute}`;
+    if (!isTimeUnavailable(nextTime)) {
+      onTimeChange(nextTime);
+    }
+  };
+
+  useEffect(() => {
+    setPortalTarget(document.getElementById("swapit-phone-viewport"));
+  }, []);
+
+  if (!portalTarget) {
+    return null;
+  }
+
+  return createPortal(
+    <div className="absolute inset-0 z-[90] flex items-end justify-center bg-black/60 px-3 pt-6 backdrop-blur-[1px]" onClick={onClose}>
+      <div
+        className="flex max-h-[92%] w-full flex-col overflow-hidden rounded-t-[28px] bg-white shadow-2xl animate-[sheetUp_.24s_ease-out]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="shrink-0 flex items-center justify-between border-b border-slate-100 px-4 py-3">
+          <div>
+            <p className="text-[13px] font-bold text-lgred">예약 시간</p>
+            <h3 className="mt-1 text-[17px] font-bold text-ink">희망 시간을 선택해요</h3>
+          </div>
+          <button
+            aria-label="시간 선택 닫기"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600"
+            onClick={onClose}
+            type="button"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <section className="rounded-3xl bg-slate-50 p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-[13px] font-bold text-ink">{copy.dateTitle}</p>
+              <p className="text-[11px] font-bold text-lgred">{formatDateLabel(selectedDate)}</p>
+            </div>
+            <div className="relative mt-4 grid grid-cols-[1.1fr_0.9fr_0.9fr] gap-2 overflow-hidden rounded-3xl bg-white px-2 py-2 shadow-sm">
+              <div className="pointer-events-none absolute left-3 right-3 top-1/2 h-11 -translate-y-1/2 rounded-2xl border-y border-slate-200 bg-slate-50/70" />
+              <WheelColumn
+                label="년"
+                onSelect={(value) => setDatePart({ year: Number(value) })}
+                options={years.map((year) => ({ label: String(year), value: String(year) }))}
+                selectedValue={String(selectedDateParts.year)}
+              />
+              <WheelColumn
+                label="월"
+                onSelect={(value) => setDatePart({ month: Number(value) })}
+                options={months.map((month) => ({ label: String(month).padStart(2, "0"), value: String(month) }))}
+                selectedValue={String(selectedDateParts.month)}
+              />
+              <WheelColumn
+                label="일"
+                onSelect={(value) => setDatePart({ day: Number(value) })}
+                options={days.map((day) => ({ label: String(day).padStart(2, "0"), value: String(day) }))}
+                selectedValue={String(selectedDateParts.day)}
+              />
+            </div>
+          </section>
+
+          <section className="mt-3 rounded-3xl bg-slate-50 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[13px] font-bold text-ink">{copy.timeTitle}</p>
+                <p className="mt-1 text-[11px] font-semibold leading-4 text-slate-500">{copy.timeDescription}</p>
+              </div>
+              {availabilityLoading ? <Loader2 className="shrink-0 animate-spin text-lgred" size={18} /> : null}
+            </div>
+
+            {availabilityError ? (
+              <p className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-700">
+                {availabilityError}
+              </p>
+            ) : null}
+
+            <div className="relative mt-4 grid grid-cols-2 gap-2 overflow-hidden rounded-3xl bg-white px-2 py-2 shadow-sm">
+              <div className="pointer-events-none absolute left-3 right-3 top-1/2 h-11 -translate-y-1/2 rounded-2xl border-y border-slate-200 bg-slate-50/70" />
+              <WheelColumn
+                label="시"
+                onSelect={selectHour}
+                options={hours.map((hour) => ({
+                  disabled: timeSlots.filter((time) => time.startsWith(`${hour}:`)).every(isTimeUnavailable),
+                  label: hour,
+                  value: hour,
+                }))}
+                selectedValue={selectedHour}
+              />
+              <WheelColumn
+                label="분"
+                onSelect={selectMinute}
+                options={minutes.map((minute) => ({
+                  disabled: isTimeUnavailable(`${selectedHour}:${minute}`),
+                  label: minute,
+                  value: minute,
+                }))}
+                selectedValue={selectedMinute}
+              />
+            </div>
+          </section>
+        </div>
+
+        <div className="shrink-0 border-t border-slate-100 bg-white px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_24px_rgba(15,23,42,.08)]">
+          <button
+            className="h-12 w-full rounded-2xl bg-lgred text-[13px] font-bold text-white"
+            onClick={onClose}
+            type="button"
+          >
+            선택 완료
+          </button>
+        </div>
+      </div>
+    </div>,
+    portalTarget,
+  );
+}
+
+function WheelColumn({
+  label,
+  options,
+  selectedValue,
+  onSelect,
+}: {
+  label: string;
+  options: { label: string; value: string; disabled?: boolean }[];
+  selectedValue: string;
+  onSelect: (value: string) => void;
+}) {
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const target = listRef.current?.querySelector("[data-wheel-active='true']");
+    target?.scrollIntoView({ block: "center" });
+  }, [selectedValue, options.length]);
+
+  return (
+    <div className="relative z-10 min-w-0">
+      <div className="h-36 snap-y snap-mandatory overflow-y-auto py-[46px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" ref={listRef}>
+        {options.map((option) => {
+          const active = selectedValue === option.value;
+
+          return (
+            <button
+              key={option.value}
+              className={`flex h-11 w-full snap-center items-center justify-center rounded-2xl text-center transition ${
+                active ? "text-[20px] font-bold text-ink" : "text-[15px] font-semibold text-slate-400"
+              } ${option.disabled ? "opacity-30" : ""}`}
+              data-wheel-active={active ? "true" : undefined}
+              disabled={option.disabled}
+              onClick={() => onSelect(option.value)}
+              type="button"
+            >
+              {option.label}
+              <span className={`ml-1 text-[11px] ${active ? "text-slate-500" : "text-slate-300"}`}>{label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function parseDateParts(value: string) {
+  const fallback = todayString();
+  const [year, month, day] = (value || fallback).split("-").map(Number);
+  return {
+    year: Number.isFinite(year) ? year : new Date().getFullYear(),
+    month: Number.isFinite(month) ? month : new Date().getMonth() + 1,
+    day: Number.isFinite(day) ? day : new Date().getDate(),
+  };
+}
+
+function daysInMonth(year: number, month: number) {
+  return new Date(year, month, 0).getDate();
+}
+
+function formatDateValue(year: number, month: number, day: number) {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 function InstantCallBooking({
@@ -654,9 +956,7 @@ function InstantCallBooking({
       {pickupMethod === "gps" ? (
         <div className="mt-4 rounded-3xl bg-slate-50 p-4">
           <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-lgred/10 text-lgred">
-              <Crosshair size={18} />
-            </span>
+            <Service3DIcon type="location" className="h-10 w-10 shrink-0" />
             <div>
               <p className="text-xs font-semibold text-slate-500">{copy.currentLocationEyebrow}</p>
               <p className="mt-1 text-[15px] font-bold leading-5 text-ink">{pickupAddress || copy.currentAddressFallback}</p>
@@ -745,29 +1045,25 @@ function PickupPreviewMap({
         path={[]}
         zoom={19}
       />
-      <div className="pointer-events-none absolute left-4 top-4 rounded-full bg-white/95 px-4 py-2 text-sm font-bold text-ink shadow">
-        {addressLabel}
-      </div>
       {adjustHint ? (
-        <div className="pointer-events-none absolute left-4 right-4 top-16 rounded-2xl bg-white/90 px-4 py-3 text-center text-xs font-semibold text-slate-700 shadow">
+        <div className="pointer-events-none absolute left-4 right-4 top-4 rounded-2xl bg-white/90 px-4 py-3 text-center text-xs font-semibold text-slate-700 shadow">
           {adjustHint}
         </div>
       ) : null}
       <button
         type="button"
         aria-label="현재 위치로 이동"
-        className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-white text-ink shadow-lg transition active:scale-95 disabled:opacity-60"
+        className="absolute bottom-4 left-4 flex h-11 w-11 items-center justify-center rounded-full bg-white text-ink shadow-lg transition active:scale-95 disabled:opacity-60"
         disabled={!onLocate || locating}
         onClick={onLocate}
       >
-        {locating ? <Loader2 className="animate-spin" size={20} /> : <MapPin size={22} />}
+        {locating ? <Loader2 className="animate-spin" size={20} /> : <Service3DIcon type="location" className="h-9 w-9" />}
       </button>
     </div>
   );
 }
 
 function PickupMapFallback({
-  addressLabel,
   showMarker = false,
 }: {
   addressLabel: string;
@@ -776,13 +1072,8 @@ function PickupMapFallback({
   return (
     <div className="relative h-[360px] bg-[radial-gradient(circle_at_72%_24%,rgba(255,184,0,.25),transparent_18%),linear-gradient(180deg,#f5f6f8,#e8edf3)]">
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(148,163,184,.16)_1px,transparent_1px),linear-gradient(0deg,rgba(148,163,184,.16)_1px,transparent_1px)] bg-[length:28px_28px]" />
-      <div className="absolute left-4 top-4 rounded-full bg-white/95 px-4 py-2 text-[13px] font-bold text-ink shadow">
-        {addressLabel}
-      </div>
       {showMarker ? (
-        <div className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-[#1f6fff] text-white shadow-xl">
-          <MapPin size={20} />
-        </div>
+        <Service3DIcon type="location" className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2" />
       ) : null}
     </div>
   );
@@ -792,6 +1083,7 @@ function ManualAddressEditor({
   address,
   copy,
   detailAddress,
+  hideHeader = false,
   onAddressChange,
   onCoordinateChange,
   onDetailAddressChange,
@@ -799,6 +1091,7 @@ function ManualAddressEditor({
   address: string;
   copy: BookingCopy;
   detailAddress: string;
+  hideHeader?: boolean;
   onAddressChange: (address: string) => void;
   onCoordinateChange: (coordinates: PickupCoordinates) => void;
   onDetailAddressChange: (address: string) => void;
@@ -910,17 +1203,17 @@ function ManualAddressEditor({
 
   return (
     <div className="mt-4 rounded-3xl bg-slate-50 p-4">
-      <div className="mb-3 flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-lgred/10 text-lgred">
-          <Search size={18} />
-        </span>
-        <div>
-          <p className="text-[13px] font-bold text-ink">{copy.manualTitle}</p>
-          <p className="text-xs font-semibold text-slate-500">
-            {copy.manualDescription}
-          </p>
+      {!hideHeader ? (
+        <div className="mb-3 flex items-center gap-3">
+          <Service3DIcon type="search" className="h-10 w-10 shrink-0" />
+          <div>
+            <p className="text-[13px] font-bold text-ink">{copy.manualTitle}</p>
+            <p className="text-xs font-semibold text-slate-500">
+              {copy.manualDescription}
+            </p>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <input
         className="h-11 w-full rounded-2xl border border-lgred/20 bg-white px-4 text-[13px] font-semibold text-ink outline-none focus:border-lgred"

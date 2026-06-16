@@ -13,22 +13,15 @@ import {
 import {
   AirVent,
   ArrowLeft,
-  Bell,
-  CalendarCheck,
   Check,
   ChevronRight,
   CheckCircle2,
-  ClipboardCheck,
-  Clock,
-  CreditCard,
   Home,
   Microwave,
   Plus,
-  Recycle,
   Refrigerator,
   ShoppingBag,
   Sparkles,
-  Truck,
   Tv,
   WashingMachine,
   Wind,
@@ -44,7 +37,7 @@ import type { CaptureSubmission } from "@/features/capture/CapturePanel";
 import { CreditPanel } from "@/features/credit/CreditPanel";
 import { AnalyzingPanel } from "@/features/inspection/AnalyzingPanel";
 import { PreValuationPanel } from "@/features/pre-valuation/PreValuationPanel";
-import { PurchasePanel } from "@/features/purchase/PurchasePanel";
+import { getDefaultProductIdForCategory, PurchasePanel, type ProductId } from "@/features/purchase/PurchasePanel";
 import { TrackingPanel } from "@/features/tracking/TrackingPanel";
 import {
   acceptPreValuation,
@@ -61,6 +54,8 @@ import {
 import { getClientAuth, isFirebaseAuthConfigured } from "@/lib/firebase";
 import type { SwapRequest } from "@/types/swap";
 import { Appliance3DIcon } from "@/components/Appliance3DIcon";
+import { Calendar3DIcon } from "@/components/Calendar3DIcon";
+import { Service3DIcon, type Service3DIconType } from "@/components/Service3DIcon";
 
 type SwapStep =
   | "intro"
@@ -105,6 +100,24 @@ const applianceOptions = [
 ] as const;
 
 type ApplianceId = (typeof applianceOptions)[number]["id"];
+
+const applianceLabels: Record<ApplianceId, string> = {
+  washing_machine: "세탁기",
+  refrigerator: "냉장고",
+  air_conditioner: "에어컨",
+  microwave: "전자레인지",
+  tv: "TV",
+  air_purifier: "공기청정기",
+};
+
+const applianceTints: Record<ApplianceId, string> = {
+  washing_machine: "from-[#e8f1ff] to-[#cfe2fb]",
+  refrigerator: "from-[#e6f7f4] to-[#cdeee7]",
+  air_conditioner: "from-[#e6f6fd] to-[#cdeefb]",
+  microwave: "from-[#fdeee6] to-[#fbd9c7]",
+  tv: "from-[#eceaff] to-[#d9d6fb]",
+  air_purifier: "from-[#e9f8ec] to-[#d2efd8]",
+};
 
 const marketProducts = [
   {
@@ -314,7 +327,7 @@ export default function HomePage() {
   const [swapStep, setSwapStep] = useState<SwapStep>("intro");
   const [selectedAppliance, setSelectedAppliance] = useState<ApplianceId>(applianceOptions[0].id);
   const [fileName, setFileName] = useState("");
-  const [selectedPurchaseProductId, setSelectedPurchaseProductId] = useState<"washer" | "fridge" | "aircon" | null>(null);
+  const [selectedPurchaseProductId, setSelectedPurchaseProductId] = useState<ProductId | null>(null);
   const [bookingPurpose, setBookingPurpose] = useState<BookingPurpose>("pickup");
   const [swapRequest, setSwapRequest] = useState<SwapRequest | null>(null);
   const [activeReservationRequest, setActiveReservationRequest] = useState<SwapRequest | null>(null);
@@ -569,6 +582,7 @@ export default function HomePage() {
   };
 
   const openPurchaseSelectionScreen = () => {
+    setSelectedPurchaseProductId((current) => current ?? getDefaultProductIdForCategory(selectedAppliance));
     setSwapStep("market");
   };
 
@@ -593,7 +607,7 @@ export default function HomePage() {
     }
 
     if (nextStep === "market" && !selectedPurchaseProductId) {
-      setSelectedPurchaseProductId("washer");
+      setSelectedPurchaseProductId(getDefaultProductIdForCategory(selectedAppliance));
     }
 
     if (nextStep === "booking") {
@@ -650,36 +664,30 @@ export default function HomePage() {
       ? "bg-[#dfeec1]"
       : !demoUser
         ? "bg-white"
-        : isSwapIntroScreen
-          ? "swapit-pattern-bg"
-          : isSwapCaptureScreen
-            ? "bg-[#111318]"
-            : "bg-cloud";
+        : marketOpened
+          ? "bg-white"
+          : isSwapIntroScreen
+            ? "swapit-pattern-bg"
+            : isSwapCaptureScreen
+              ? "bg-[#111318]"
+              : swapItOpened
+                ? "bg-white"
+                : "bg-cloud";
 
   return (
     <main className="flex min-h-[100dvh] justify-center bg-cloud">
-      <section className="relative min-h-[100dvh] w-full max-w-[430px] bg-cloud">
-        <div id="swapit-phone-viewport" className="relative h-[100dvh] w-full overflow-hidden bg-cloud">
+      <section className={`relative min-h-[100dvh] w-full max-w-[430px] ${phoneViewportBackgroundClass}`}>
+        <div id="swapit-phone-viewport" className={`relative h-[100dvh] w-full overflow-hidden ${phoneViewportBackgroundClass}`}>
           {showSplash ? (
             <ThinQSplashScreen />
           ) : thinQOpened ? (
-            <div
-              className={`relative flex h-full animate-[fadeIn_.18s_ease-out] flex-col ${
-                isSwapIntroScreen
-                  ? "swapit-pattern-bg"
-                  : isSwapCaptureScreen
-                    ? "bg-[#111318]"
-                    : "bg-cloud"
-              }`}
-            >
+            <div className={`relative flex h-full animate-[fadeIn_.18s_ease-out] flex-col ${phoneViewportBackgroundClass}`}>
               {isSwapIntroScreen ? (
                 <IndianPatternOverlay className="z-0" />
               ) : null}
-              {!isSwapCaptureScreen ? (
-                <PhoneStatusBar
-                  className={isSwapIntroScreen ? "bg-transparent" : demoUser && !marketOpened ? "bg-cloud" : "bg-white"}
-                />
-              ) : null}
+              <PhoneStatusBar
+                className={isSwapIntroScreen ? "bg-transparent" : phoneViewportBackgroundClass}
+              />
               {!demoUser ? (
                 <DemoLoginScreen
                   onBack={() => {
@@ -737,7 +745,10 @@ export default function HomePage() {
                     setSwapItOpened(false);
                   }}
                   onNewRequest={resetExchangeFlow}
-                  onApplianceChange={setSelectedAppliance}
+                  onApplianceChange={(appliance) => {
+                    setSelectedAppliance(appliance);
+                    setSelectedPurchaseProductId(null);
+                  }}
                   onStart={() => setSwapStep("capture")}
                   onFileChange={setFileName}
                   onAnalyze={(submission) => {
@@ -1100,7 +1111,7 @@ function DemoLoginScreen({
             <span className="sr-only">이메일 아이디</span>
             <div className="flex items-center gap-3">
               <input
-                className="h-12 min-w-0 flex-1 border-0 bg-transparent text-[21px] font-semibold text-black outline-none placeholder:text-[#8a8a8a]"
+                className="h-10 min-w-0 translate-y-[2px] flex-1 border-0 bg-transparent text-[21px] font-semibold text-black outline-none placeholder:text-[#8a8a8a]"
                 value={email}
                 onChange={(event) => {
                   setEmail(event.target.value);
@@ -1135,11 +1146,11 @@ function DemoLoginScreen({
             이름, 전화번호, 비밀번호를 입력한 뒤 이메일 인증을 진행해주세요.
           </p>
 
-          <label className="mt-8 block border-b border-[#777] pb-3">
+          <label className="mt-7 block border-b border-[#777] pb-2">
             <span className="sr-only">비밀번호</span>
             <div className="flex items-center gap-3">
               <input
-                className="h-12 min-w-0 flex-1 border-0 bg-transparent text-[21px] font-semibold text-black outline-none placeholder:text-[#8a8a8a]"
+                className="h-10 min-w-0 translate-y-[2px] flex-1 border-0 bg-transparent text-[21px] font-semibold text-black outline-none placeholder:text-[#8a8a8a]"
                 value={password}
                 onChange={(event) => {
                   setPassword(event.target.value);
@@ -1149,7 +1160,7 @@ function DemoLoginScreen({
                 type={showPassword ? "text" : "password"}
               />
               <button
-                className="shrink-0 text-sm font-bold text-[#555]"
+                className="shrink-0 translate-y-[2px] text-sm font-bold text-[#555]"
                 onClick={() => setShowPassword((visible) => !visible)}
                 type="button"
               >
@@ -1215,10 +1226,10 @@ function DemoLoginScreen({
       <section className="mx-auto w-full max-w-[336px]">
         <LgElectronicsLogo className="mb-12" />
 
-        <label className="block border-b-2 border-black pb-4">
+        <label className="block border-b-2 border-black pb-3">
           <span className="sr-only">이메일</span>
           <input
-            className="h-12 w-full border-0 bg-transparent text-[21px] font-semibold text-black outline-none placeholder:text-[#8a8a8a]"
+            className="h-10 w-full translate-y-[2px] border-0 bg-transparent text-[21px] font-semibold text-black outline-none placeholder:text-[#8a8a8a]"
             value={email}
             onChange={(event) => {
               setEmail(event.target.value);
@@ -1229,11 +1240,11 @@ function DemoLoginScreen({
           />
         </label>
 
-        <label className="mt-9 block border-b border-[#777] pb-3">
+        <label className="mt-8 block border-b border-[#777] pb-2">
           <span className="sr-only">비밀번호</span>
           <div className="flex items-center gap-3">
             <input
-              className="h-12 min-w-0 flex-1 border-0 bg-transparent text-[21px] font-semibold text-black outline-none placeholder:text-[#8a8a8a]"
+              className="h-10 min-w-0 translate-y-[2px] flex-1 border-0 bg-transparent text-[21px] font-semibold text-black outline-none placeholder:text-[#8a8a8a]"
               value={password}
               onChange={(event) => {
                 setPassword(event.target.value);
@@ -1243,7 +1254,7 @@ function DemoLoginScreen({
               type={showPassword ? "text" : "password"}
             />
             <button
-              className="shrink-0 text-sm font-bold text-[#555]"
+              className="shrink-0 translate-y-[2px] text-sm font-bold text-[#555]"
               onClick={() => setShowPassword((visible) => !visible)}
               type="button"
             >
@@ -1310,8 +1321,8 @@ function DemoLoginScreen({
 function LgElectronicsLogo({ className = "" }: { className?: string }) {
   return (
     <div className={`flex items-baseline gap-2 ${className}`}>
-      <span className="text-[34px] font-bold tracking-[-0.03em] text-[#777]">LG</span>
-      <span className="text-[34px] font-bold tracking-[-0.03em] text-lgred">ThinQ</span>
+      <span className="text-[36px] font-bold tracking-[-0.03em] text-[#222]">LG</span>
+      <span className="text-[36px] font-bold tracking-[-0.03em] text-lgred">ThinQ</span>
     </div>
   );
 }
@@ -1416,41 +1427,29 @@ function ThinQHomeScreen({
         ) : null}
 
         <section className="rounded-[20px] bg-white p-2 shadow-sm">
-          <div className="flex items-center justify-between px-3 py-2.5">
-            <h2 className="text-sm font-bold text-ink">내 디바이스</h2>
-            <button className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">
-              전체 2
-            </button>
-          </div>
-          <div className="divide-y divide-slate-100">
-            <DeviceCard icon={<WashingMachine size={24} />} label="세탁기" status="대기 중" />
-            <DeviceCard icon={<Refrigerator size={24} />} label="냉장고" status="정상" />
-          </div>
-        </section>
-
-        <section className="rounded-[20px] bg-white p-2 shadow-sm">
           <button
-            className="flex w-full items-center gap-3 rounded-[16px] p-3 text-left text-ink"
+            className="swapit-pattern-bg relative flex w-full items-center gap-3 overflow-hidden rounded-[18px] p-4 text-left text-white shadow-[0_12px_28px_rgba(90,0,38,0.22)]"
             onClick={onOpenSwapIt}
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-lgred/10 text-lgred">
-              <Recycle size={24} />
-            </span>
+            <span className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-white/12 blur-sm" />
+            <span className="pointer-events-none absolute bottom-[-36px] left-8 h-24 w-24 rounded-full bg-white/10 blur-xl" />
+            <HomeAction3DIcon featured type="swapit" />
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold">SwapIt 가전 교환</span>
-              <span className="mt-0.5 block truncate text-xs text-slate-500">
+              <span className="block text-[11px] font-bold text-white/70">LG ThinQ</span>
+              <span className="mt-0.5 block text-[20px] font-bold leading-none">SwapIt</span>
+              <span className="mt-2 block truncate text-xs font-semibold text-white/82">
                 사진 등록부터 보상, 수거 예약까지
               </span>
             </span>
-            <ChevronRight size={20} className="text-slate-400" />
+            <span className="relative z-10 rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-bold text-lgred shadow-sm">
+              시작하기
+            </span>
           </button>
           <button
-            className="flex w-full items-center gap-3 rounded-[16px] p-3 text-left text-ink"
+            className="mt-2 flex w-full items-center gap-3 rounded-[16px] p-3 text-left text-ink"
             onClick={onOpenMarket}
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-slate-100 text-slate-600">
-              <ShoppingBag size={24} />
-            </span>
+            <HomeAction3DIcon type="market" />
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-bold">LG 가전 마켓</span>
               <span className="mt-0.5 block truncate text-xs text-slate-500">
@@ -1459,6 +1458,19 @@ function ThinQHomeScreen({
             </span>
             <ChevronRight size={20} className="text-slate-500" />
           </button>
+        </section>
+
+        <section className="rounded-[20px] bg-white p-2 shadow-sm">
+          <div className="flex items-center justify-between px-3 py-2.5">
+            <h2 className="text-sm font-bold text-ink">내 디바이스</h2>
+            <button className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-500">
+              전체 2
+            </button>
+          </div>
+          <div className="divide-y divide-slate-100">
+            <DeviceCard applianceId="washing_machine" label="세탁기" status="대기 중" />
+            <DeviceCard applianceId="refrigerator" label="냉장고" status="정상" />
+          </div>
         </section>
       </div>
 
@@ -1581,6 +1593,25 @@ function ProductImage({
   );
 }
 
+function CalendarStatusIcon({ size = 22 }: { size?: number }) {
+  const iconSize = size + 2;
+  return <Calendar3DIcon style={{ width: iconSize, height: iconSize }} />;
+}
+
+function createServiceStatusIcon(type: Service3DIconType) {
+  return function ServiceStatusIcon({ size = 22 }: { size?: number }) {
+    const iconSize = size + 2;
+    return <Service3DIcon type={type} style={{ width: iconSize, height: iconSize }} />;
+  };
+}
+
+const TruckStatusIcon = createServiceStatusIcon("truck");
+const ClipboardStatusIcon = createServiceStatusIcon("clipboard");
+const BellStatusIcon = createServiceStatusIcon("bell");
+const ClockStatusIcon = createServiceStatusIcon("clock");
+const CheckStatusIcon = createServiceStatusIcon("check");
+const RecycleStatusIcon = createServiceStatusIcon("recycle");
+
 function SwapItStatusCard({
   status,
   reservationLabel,
@@ -1630,43 +1661,43 @@ function getHomeStatusCard(status: HomeSwapStatus, reservationLabel: string) {
   switch (status) {
     case "reserved":
       return {
-        icon: CalendarCheck,
+        icon: CalendarStatusIcon,
         title: "수거 예약이 완료됐어요",
         description: (reservationLabel || "예약 시간") + "에 맞춰 수거가 진행돼요.",
       };
     case "pickup":
       return {
-        icon: Truck,
+        icon: TruckStatusIcon,
         title: "수거가 진행 중이에요",
         description: "배정된 수거 크루가 방문을 준비하고 있어요.",
       };
     case "reviewPending":
       return {
-        icon: ClipboardCheck,
+        icon: ClipboardStatusIcon,
         title: "최종 확인 중",
         description: "수거물 확인과 허브 인수 절차가 완료되면 ThinQ 알림으로 안내해 드려요.",
       };
     case "reviewCompleted":
       return {
-        icon: Bell,
+        icon: BellStatusIcon,
         title: "확인이 완료됐어요",
         description: "최종 감정 결과와 보상 정보를 확인해 보세요.",
       };
     case "reReviewPending":
       return {
-        icon: Clock,
+        icon: ClockStatusIcon,
         title: "재검토 중",
         description: "요청하신 내용을 기준으로 다시 확인하고 있어요.",
       };
     case "reReviewCompleted":
       return {
-        icon: CheckCircle2,
+        icon: CheckStatusIcon,
         title: "재검토가 완료됐어요",
         description: "재검토 결과와 최종 보상 정보를 확인해 보세요.",
       };
     default:
       return {
-        icon: Recycle,
+        icon: RecycleStatusIcon,
         title: "SwapIt 신청 가능",
         description: "오래된 가전을 보상 크레딧으로 바꿔보세요.",
       };
@@ -1701,8 +1732,8 @@ function SwapItFeatureScreen(props: {
   onValuationNext: () => void;
   onOpenInstallationBooking: () => void;
   onOpenPurchaseFlow: () => void;
-  selectedPurchaseProductId: "washer" | "fridge" | "aircon" | null;
-  onSelectPurchaseProduct: (productId: "washer" | "fridge" | "aircon" | null) => void;
+  selectedPurchaseProductId: ProductId | null;
+  onSelectPurchaseProduct: (productId: ProductId | null) => void;
   onBooking: (booking: BookingSelection) => void;
   onComplete: () => void;
   onFinalize: () => void;
@@ -1719,7 +1750,23 @@ function SwapItFeatureScreen(props: {
 }) {
   const selectedLabel =
     applianceOptions.find((option) => option.id === props.selectedAppliance)?.label ?? "가전";
-  const showFeatureHeader = props.step !== "capture";
+  const [captureNoticeOpen, setCaptureNoticeOpen] = useState(false);
+  const [creditPolicyAgreed, setCreditPolicyAgreed] = useState(false);
+  const [truthfulnessAgreed, setTruthfulnessAgreed] = useState(false);
+
+  const openCaptureNotice = () => {
+    setCaptureNoticeOpen(true);
+  };
+
+  const closeCaptureNotice = () => {
+    setCaptureNoticeOpen(false);
+  };
+
+  const startCaptureAfterNotice = () => {
+    if (!creditPolicyAgreed || !truthfulnessAgreed) return;
+    setCaptureNoticeOpen(false);
+    props.onStart();
+  };
 
   return (
     <div
@@ -1727,56 +1774,38 @@ function SwapItFeatureScreen(props: {
         props.step === "intro" ? "overflow-hidden" : ""
       }`}
     >
-      {!showFeatureHeader ? (
-        <button
-          className="absolute right-4 top-4 z-40 rounded-full bg-white/95 px-4 py-2 text-xs font-bold text-lgred shadow-sm ring-1 ring-lgred/10"
-          onClick={props.onNextScreen}
-          type="button"
-        >
-          다음 화면
-        </button>
-      ) : null}
-
-      {showFeatureHeader ? (
-        <header className="relative z-20 px-4 pb-3">
-          <div className="mb-3 flex items-center justify-between">
-            <button
-              aria-label="이전 화면으로 돌아가기"
-              className={`flex h-9 w-9 items-center justify-center rounded-full shadow-sm ${
-                props.step === "intro" ? "bg-white/95 text-lgred" : "bg-white text-ink"
-              }`}
-              onClick={props.onBack}
-            >
-              <ArrowLeft size={18} />
-            </button>
-            <button
-              className="h-9 rounded-full bg-white/95 px-4 text-xs font-bold text-lgred shadow-sm ring-1 ring-lgred/10"
-              onClick={props.onNextScreen}
-              type="button"
-            >
-              다음 화면
-            </button>
-            <button
-              className={`h-9 rounded-full bg-white/95 px-3 text-xs font-bold text-lgred shadow-sm disabled:text-slate-500 ${
-                props.step === "tracking" ? "invisible w-9 px-0" : ""
-              }`}
-              disabled={props.isBusy}
-              onClick={props.step === "intro" ? props.onClose : props.onReturnHome}
-            >
-              {props.step === "intro" ? "닫기" : <Home size={16} />}
-            </button>
-          </div>
-          {props.step !== "intro" &&
-          props.step !== "ongoing" &&
-          props.step !== "tracking" &&
-          props.step !== "credit" ? (
-            <ThreeStepProgress step={props.step} />
-          ) : null}
-          {(props.step === "ongoing" || props.step === "tracking" || props.step === "credit") ? (
-            <OngoingReservationHeader bookingPurpose={props.bookingPurpose} step={props.step} />
-          ) : null}
-        </header>
-      ) : null}
+      <header className="relative z-20 px-4 pb-3">
+        <div className="mb-3 flex items-center justify-between">
+          <button
+            aria-label="이전 화면으로 돌아가기"
+            className={`flex h-9 w-9 items-center justify-center rounded-full shadow-sm ${
+              props.step === "intro" ? "bg-white/95 text-lgred" : "bg-white text-ink"
+            }`}
+            onClick={props.onBack}
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <button
+            className="h-9 rounded-full bg-white/95 px-4 text-xs font-bold text-lgred shadow-sm ring-1 ring-lgred/10"
+            onClick={props.onNextScreen}
+            type="button"
+          >
+            다음 화면
+          </button>
+          <button
+            className={`h-9 rounded-full bg-white/95 px-3 text-xs font-bold text-lgred shadow-sm disabled:text-slate-500 ${
+              props.step === "tracking" ? "invisible w-9 px-0" : ""
+            }`}
+            disabled={props.isBusy}
+            onClick={props.step === "intro" ? props.onClose : props.onReturnHome}
+          >
+            {props.step === "intro" ? "닫기" : <Home size={16} />}
+          </button>
+        </div>
+        {(props.step === "ongoing" || props.step === "tracking" || props.step === "credit") ? (
+          <OngoingReservationHeader bookingPurpose={props.bookingPurpose} step={props.step} />
+        ) : null}
+      </header>
 
       <div
         className={getContentClassName(props.step)}
@@ -1790,7 +1819,7 @@ function SwapItFeatureScreen(props: {
           <SwapItIntro
             selectedAppliance={props.selectedAppliance}
             onApplianceChange={props.onApplianceChange}
-            onStart={props.onStart}
+            onStart={openCaptureNotice}
           />
         ) : null}
         {props.step === "capture" ? (
@@ -1824,6 +1853,7 @@ function SwapItFeatureScreen(props: {
         {props.step === "market" ? (
           <PurchasePanel
             estimatedCredit={Math.round(((props.swapRequest?.preValuation.minEstimatedValue ?? 0) + (props.swapRequest?.preValuation.maxEstimatedValue ?? 0)) / 2)}
+            preferredCategoryId={props.selectedAppliance}
             selectedProductId={props.selectedPurchaseProductId}
             onSelectProduct={(productId) => props.onSelectPurchaseProduct(productId)}
             onContinueToBooking={props.onOpenInstallationBooking}
@@ -1878,105 +1908,150 @@ function SwapItFeatureScreen(props: {
           />
         ) : null}
       </div>
+      {captureNoticeOpen ? (
+        <CaptureNoticeDialog
+          creditPolicyAgreed={creditPolicyAgreed}
+          truthfulnessAgreed={truthfulnessAgreed}
+          onClose={closeCaptureNotice}
+          onConfirm={startCaptureAfterNotice}
+          onToggleCreditPolicy={() => setCreditPolicyAgreed((checked) => !checked)}
+          onToggleTruthfulness={() => setTruthfulnessAgreed((checked) => !checked)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function StepProgress({ step }: { step: SwapStep }) {
-  const currentStep = getProgressStep(step);
-  const steps = [
-    { id: 1, label: "촬영" },
-    { id: 2, label: "감정" },
-    { id: 3, label: "예약" },
-    { id: 4, label: "이동" },
-    { id: 5, label: "보상" },
-  ];
+function CaptureNoticeDialog({
+  creditPolicyAgreed,
+  truthfulnessAgreed,
+  onClose,
+  onConfirm,
+  onToggleCreditPolicy,
+  onToggleTruthfulness,
+}: {
+  creditPolicyAgreed: boolean;
+  truthfulnessAgreed: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  onToggleCreditPolicy: () => void;
+  onToggleTruthfulness: () => void;
+}) {
+  const ready = creditPolicyAgreed && truthfulnessAgreed;
 
   return (
-    <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
-      <div className="flex items-center">
-        {steps.map((item, index) => {
-          const active = item.id === currentStep;
-          const done = item.id < currentStep;
-
-          return (
-            <div key={item.id} className="flex flex-1 items-center last:flex-none">
-              <div className="flex shrink-0 flex-col items-center gap-1">
-                <div
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
-                    active || done ? "bg-lgred text-white" : "bg-[#e8e8f1] text-slate-500"
-                  }`}
-                >
-                  {item.id}
-                </div>
-                <span
-                  className={`text-[10px] font-semibold leading-none ${
-                    active || done ? "text-lgred" : "text-slate-500"
-                  }`}
-                >
-                  {item.label}
-                </span>
-              </div>
-              {index < steps.length - 1 ? (
-                <div
-                  className={`mx-1.5 mb-4 h-[3px] flex-1 rounded-full ${
-                    done ? "bg-lgred/70" : "bg-[#e1e1eb]"
-                  }`}
-                />
-              ) : null}
+    <div
+      className="absolute inset-0 z-[80] flex items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-[2px]"
+      onClick={onClose}
+    >
+      <section
+        className="flex max-h-full w-full flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl animate-[fadeIn_.16s_ease-out]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="shrink-0 px-5 pb-3 pt-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[15px] font-bold text-lgred">촬영 전 확인</p>
+              <h2 className="mt-2 text-[22px] font-bold leading-snug text-ink">
+                사진 촬영 전에 확인해 주세요
+              </h2>
+              <p className="mt-2 text-[13px] font-medium leading-5 text-slate-500">
+                제품 상태를 정확히 확인할 수 있도록 아래 내용을 먼저 확인해요.
+              </p>
             </div>
-          );
-        })}
-      </div>
+            <button
+              className="shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600"
+              onClick={onClose}
+              type="button"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+
+        <div className="phone-scroll min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-4">
+          <CaptureNoticeCard
+            title="보상 기준을 확인해요"
+            description="사진을 바탕으로 AI가 예상 크레딧을 계산해요. 실제 제품 상태에 따라 최종 보상은 달라질 수 있어요."
+          />
+          <ConsentToggle
+            checked={creditPolicyAgreed}
+            title="[필수] 크레딧 산정 기준에 동의해요."
+            onToggle={onToggleCreditPolicy}
+          />
+
+          <CaptureNoticeCard
+            title="실제 상태 그대로 촬영해요"
+            description="제품의 현재 상태가 잘 보이도록 촬영해 주세요. 고의적인 훼손이나 허위 정보가 확인되면 이용이 제한될 수 있어요."
+          />
+          <ConsentToggle
+            checked={truthfulnessAgreed}
+            title="[필수] 실제 제품 상태와 다름없음을 확인해요."
+            onToggle={onToggleTruthfulness}
+          />
+
+          <CaptureNoticeCard
+            title="외관과 라벨을 순서대로 찍어요"
+            description="제품 전체가 보이는 사진을 먼저 찍고, 다음 화면에서 모델명 라벨을 찍어요."
+          />
+        </div>
+
+        <div className="shrink-0 border-t border-slate-100 bg-white px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-3">
+          <button
+            className="h-14 w-full rounded-[16px] bg-lgred px-4 text-sm font-bold text-white shadow-sm disabled:bg-slate-300"
+            disabled={!ready}
+            onClick={onConfirm}
+            type="button"
+          >
+            동의하고 사진 등록하기
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
 
-function ThreeStepProgress({ step }: { step: SwapStep }) {
-  const currentStep = getProgressStep(step);
-  const steps = [
-    { id: 1, label: "촬영" },
-    { id: 2, label: "감정" },
-    { id: 3, label: "예약" },
-  ];
-
+function CaptureNoticeCard({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
   return (
-    <div className="rounded-2xl bg-white px-3 py-2 shadow-sm">
-      <div className="flex items-center">
-        {steps.map((item, index) => {
-          const active = item.id === currentStep;
-          const done = item.id < currentStep;
-
-          return (
-            <div key={item.id} className="flex flex-1 items-center last:flex-none">
-              <div className="flex shrink-0 flex-col items-center gap-1">
-                <div
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
-                    active || done ? "bg-lgred text-white" : "bg-[#e8e8f1] text-slate-500"
-                  }`}
-                >
-                  {item.id}
-                </div>
-                <span
-                  className={`text-[10px] font-semibold leading-none ${
-                    active || done ? "text-lgred" : "text-slate-500"
-                  }`}
-                >
-                  {item.label}
-                </span>
-              </div>
-              {index < steps.length - 1 ? (
-                <div
-                  className={`mx-1.5 mb-4 h-[3px] flex-1 rounded-full ${
-                    done ? "bg-lgred/70" : "bg-[#e1e1eb]"
-                  }`}
-                />
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+    <div className="rounded-[20px] bg-slate-50 p-3">
+      <p className="text-sm font-bold text-ink">{title}</p>
+      <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{description}</p>
     </div>
+  );
+}
+
+function ConsentToggle({
+  checked,
+  title,
+  onToggle,
+}: {
+  checked: boolean;
+  title: string;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      className={`flex w-full items-center gap-3 rounded-[16px] p-3 text-left transition ${
+        checked ? "bg-lgred/5" : "bg-white"
+      }`}
+      onClick={onToggle}
+      type="button"
+    >
+      <span
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+          checked ? "bg-lgred text-white" : "bg-slate-100 text-slate-400"
+        }`}
+      >
+        <CheckCircle2 size={14} />
+      </span>
+      <span className="min-w-0 text-sm font-bold text-ink">{title}</span>
+    </button>
   );
 }
 
@@ -2034,27 +2109,6 @@ function getContentClassName(step: SwapStep) {
   return "phone-scroll relative z-10 flex-1 overflow-y-auto px-4 pb-4";
 }
 
-function getProgressStep(step: SwapStep) {
-  switch (step) {
-    case "capture":
-      return 1;
-    case "analyzing":
-    case "valuation":
-    case "market":
-      return 2;
-    case "booking":
-    case "reservationComplete":
-    case "ongoing":
-      return 3;
-    case "tracking":
-      return 4;
-    case "credit":
-      return 5;
-    default:
-      return 1;
-  }
-}
-
 function SwapItIntro({
   selectedAppliance,
   onApplianceChange,
@@ -2064,22 +2118,6 @@ function SwapItIntro({
   onApplianceChange: (appliance: ApplianceId) => void;
   onStart: () => void;
 }) {
-  const applianceLabels: Record<ApplianceId, string> = {
-    washing_machine: "세탁기",
-    refrigerator: "냉장고",
-    air_conditioner: "에어컨",
-    microwave: "전자레인지",
-    tv: "TV",
-    air_purifier: "공기청정기",
-  };
-  const applianceTints: Record<ApplianceId, string> = {
-    washing_machine: "from-[#e8f1ff] to-[#cfe2fb]",
-    refrigerator: "from-[#e6f7f4] to-[#cdeee7]",
-    air_conditioner: "from-[#e6f6fd] to-[#cdeefb]",
-    microwave: "from-[#fdeee6] to-[#fbd9c7]",
-    tv: "from-[#eceaff] to-[#d9d6fb]",
-    air_purifier: "from-[#e9f8ec] to-[#d2efd8]",
-  };
   const selectedLabel = applianceLabels[selectedAppliance];
 
   return (
@@ -2166,7 +2204,7 @@ function SwapItIntro({
           className="h-14 w-full rounded-[16px] bg-lgred text-sm font-bold text-white"
           onClick={onStart}
         >
-          사진 등록하러 가기
+          사진 등록하기
         </button>
       </div>
     </section>
@@ -2178,17 +2216,21 @@ function IndianPatternOverlay({ className = "" }: { className?: string }) {
 }
 
 function DeviceCard({
-  icon,
+  applianceId,
   label,
   status,
 }: {
-  icon: React.ReactNode;
+  applianceId: ApplianceId;
   label: string;
   status: string;
 }) {
   return (
     <div className="flex items-center gap-3 rounded-[16px] px-3 py-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-lgred/10 text-lgred">{icon}</div>
+      <div
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${applianceTints[applianceId]} ring-1 ring-white/80 shadow-[inset_0_2px_6px_rgba(255,255,255,0.85),0_4px_10px_rgba(30,40,70,0.10)]`}
+      >
+        <Appliance3DIcon id={applianceId} className="h-7 w-7" />
+      </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold text-ink">{label}</p>
         <p className="mt-0.5 text-xs font-semibold text-slate-500">{status}</p>
@@ -2198,6 +2240,66 @@ function DeviceCard({
       </span>
       <ChevronRight size={18} className="text-slate-400" />
     </div>
+  );
+}
+
+function HomeAction3DIcon({ type, featured = false }: { type: "swapit" | "market"; featured?: boolean }) {
+  const isSwapIt = type === "swapit";
+
+  return (
+    <span
+      className={`relative z-10 flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${
+        featured ? "h-12 w-12" : "h-11 w-11"
+      } ${
+        isSwapIt ? "from-[#ffe9f2] to-[#f9c9db]" : "from-[#fff0f6] to-[#ffd7e6]"
+      } ring-1 ring-white/80 shadow-[inset_0_2px_6px_rgba(255,255,255,0.85),0_4px_10px_rgba(30,40,70,0.10)]`}
+      aria-hidden="true"
+    >
+      {isSwapIt ? <SwapIt3DIcon featured={featured} /> : <LgLogo3DIcon />}
+    </span>
+  );
+}
+
+function SwapIt3DIcon({ featured = false }: { featured?: boolean }) {
+  return (
+    <svg viewBox="0 0 48 48" className={featured ? "h-9 w-9" : "h-8 w-8"} aria-hidden="true">
+      <defs>
+        <linearGradient id="swapit-box" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="0.55" stopColor="#f6dce8" />
+          <stop offset="1" stopColor="#d83d74" />
+        </linearGradient>
+        <linearGradient id="swapit-arrow" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ff7aa4" />
+          <stop offset="1" stopColor="#b0003a" />
+        </linearGradient>
+      </defs>
+      <ellipse cx="24" cy="42.5" rx="13" ry="2.4" fill="rgba(60,20,45,0.22)" />
+      <path d="M13 16.5 24 10l11 6.5v14L24 37l-11-6.5z" fill="url(#swapit-box)" stroke="#bd2b61" strokeWidth="0.8" />
+      <path d="M13 16.5 24 23l11-6.5" fill="none" stroke="#ffffff" strokeWidth="1.2" opacity="0.7" />
+      <path d="M24 23v14" stroke="#b83769" strokeWidth="0.9" opacity="0.55" />
+      <path
+        d="M18.6 12.8a12.5 12.5 0 0 1 15 5.1l2.1-1.1-1.2 7-6.2-3.2 2.2-1.2a8.8 8.8 0 0 0-10.3-3.5"
+        fill="url(#swapit-arrow)"
+      />
+      <path
+        d="M29.4 35.2a12.5 12.5 0 0 1-15-5.1l-2.1 1.1 1.2-7 6.2 3.2-2.2 1.2a8.8 8.8 0 0 0 10.3 3.5"
+        fill="url(#swapit-arrow)"
+        opacity="0.9"
+      />
+      <path d="M15.2 15.8 24 10.8l8.8 5.1" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" opacity="0.45" />
+    </svg>
+  );
+}
+
+function LgLogo3DIcon() {
+  return (
+    <img
+      alt=""
+      aria-hidden="true"
+      className="h-8 w-8 rounded-full object-contain shadow-[0_2px_5px_rgba(80,20,45,0.18)]"
+      src="/lg-symbol.png"
+    />
   );
 }
 

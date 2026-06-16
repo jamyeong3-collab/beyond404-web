@@ -89,11 +89,36 @@ export function PreValuationPanel({
 
       {hasValuation && valuation ? (
         <>
-          <div className="mt-4 rounded-3xl bg-[#202632] px-4 py-4 text-white">
-            <p className="text-[15px] font-bold leading-5 text-white">예상 가격이에요</p>
-            <p className="mt-1 text-[20px] font-bold leading-6">{estimatedValue.toLocaleString()}원</p>
-            <p className="mt-2 text-[13px] font-medium leading-5 text-white/70">
-              수거만 진행해도 받을 수 있는 기본 예상 크레딧이에요. LG 가전 구매와 연결하면 제품 가격에 따라 추가 할인이 적용돼요.
+          <div className="mt-4 rounded-[28px] bg-white p-4 shadow-[0_10px_26px_rgba(15,23,42,0.08)] ring-1 ring-slate-100">
+            <div className="flex items-center justify-between gap-3">
+              <span className="rounded-full bg-lgred/8 px-3 py-1 text-[11px] font-bold text-lgred">
+                예상 크레딧
+              </span>
+              <span className="text-[10px] font-bold text-slate-400">수거 후 확정</span>
+            </div>
+
+            <div className="mt-4 flex items-end justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[13px] font-bold leading-5 text-slate-500">기본 보상 금액이에요</p>
+                <p className="mt-1 text-[28px] font-bold leading-8 text-ink">
+                  {estimatedValue.toLocaleString()}원
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl bg-slate-50 px-3 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[12px] font-semibold text-slate-500">수거만 진행</span>
+                <span className="text-[12px] font-bold text-ink">기본 크레딧 지급</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <span className="text-[12px] font-semibold text-slate-500">LG 가전 구매</span>
+                <span className="text-[12px] font-bold text-lgred">추가 할인 가능</span>
+              </div>
+            </div>
+
+            <p className="mt-3 truncate text-[10px] font-semibold leading-4 text-slate-500">
+              최종 크레딧은 수거 후 상태와 선택한 구매 제품 가격에 따라 달라질 수 있어요.
             </p>
           </div>
 

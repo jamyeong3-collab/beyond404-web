@@ -1,4 +1,5 @@
-import { CalendarCheck, Clock, MapPin } from "lucide-react";
+import { Calendar3DIcon } from "@/components/Calendar3DIcon";
+import { Service3DIcon } from "@/components/Service3DIcon";
 import type { ReactNode } from "react";
 
 type ReservationStatusPanelProps = {
@@ -17,14 +18,12 @@ export function ReservationStatusPanel({
   return (
     <section className="flex h-full flex-col rounded-[28px] bg-white p-5 shadow-sm">
       <div className="flex items-center gap-2 text-sm font-bold text-lgred">
-        <CalendarCheck size={18} />
+        <Calendar3DIcon className="h-6 w-6 shrink-0" />
         진행 중인 예약
       </div>
 
       <div className="mt-5 rounded-3xl border border-lgred/15 bg-lgred/5 p-5 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-lgred text-white">
-          <CalendarCheck size={30} />
-        </div>
+        <Calendar3DIcon className="mx-auto h-14 w-14" />
         <p className="mt-4 text-xs font-semibold text-lgred">수거 예약이 등록되어 있습니다</p>
         <h2 className="mt-2 text-2xl font-bold text-ink">{reservationLabel || "예약 시간 확인 중"}</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -33,9 +32,9 @@ export function ReservationStatusPanel({
       </div>
 
       <div className="mt-4 space-y-3">
-        <InfoRow icon={<Clock size={18} />} title="예약 시간" description={reservationLabel || "예약 정보 없음"} />
+        <InfoRow icon={<Service3DIcon type="clock" className="h-9 w-9" />} title="예약 시간" description={reservationLabel || "예약 정보 없음"} />
         <InfoRow
-          icon={<MapPin size={18} />}
+          icon={<Service3DIcon type="location" className="h-9 w-9" />}
           title="수거 위치"
           description={reservationAddress || "입력한 수거 주소를 불러오는 중입니다."}
         />
@@ -72,7 +71,7 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-lgred/10 text-lgred">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center">
         {icon}
       </span>
       <div>

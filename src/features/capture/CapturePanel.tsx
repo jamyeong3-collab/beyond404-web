@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AlertTriangle,
   Camera,
   CheckCircle2,
   Loader2,
@@ -14,7 +13,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 
 type ApplianceId = "washing_machine" | "refrigerator" | "air_conditioner" | "microwave" | "tv" | "air_purifier";
-type CapturePhase = "consent" | "camera" | "recognizing" | "sticker-camera" | "sticker-recognizing" | "review";
+type CapturePhase = "camera" | "recognizing" | "sticker-camera" | "sticker-recognizing" | "review";
 type CaptureTarget = "exterior" | "label";
 
 export type CaptureSubmission = {
@@ -315,12 +314,10 @@ export function CapturePanel({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [phase, setPhase] = useState<CapturePhase>("consent");
+  const [phase, setPhase] = useState<CapturePhase>("camera");
   const [target, setTarget] = useState<CaptureTarget>("exterior");
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraMessage, setCameraMessage] = useState("");
-  const [creditPolicyAgreed, setCreditPolicyAgreed] = useState(false);
-  const [truthfulnessAgreed, setTruthfulnessAgreed] = useState(false);
   const [exteriorPhotoFileName, setExteriorPhotoFileName] = useState(fileName);
   const [labelPhotoFileName, setLabelPhotoFileName] = useState("");
   const [exteriorPreviewUrl, setExteriorPreviewUrl] = useState("");
@@ -662,19 +659,6 @@ export function CapturePanel({
     return <AnalyzingView applianceLabel={applianceLabel} />;
   }
 
-  if (phase === "consent") {
-    return (
-      <ConsentView
-        creditPolicyAgreed={creditPolicyAgreed}
-        truthfulnessAgreed={truthfulnessAgreed}
-        onCancel={onCancel}
-        onContinue={() => void openCamera("exterior", "camera")}
-        setCreditPolicyAgreed={setCreditPolicyAgreed}
-        setTruthfulnessAgreed={setTruthfulnessAgreed}
-      />
-    );
-  }
-
   if (phase === "recognizing") {
     return <RecognizingView applianceLabel={applianceLabel} />;
   }
@@ -696,7 +680,7 @@ export function CapturePanel({
             exteriorPhotoUrl: exteriorPreviewUrl,
             labelPhotoFileName,
             labelPhotoUrl: labelPreviewUrl,
-            agreedToCreditPolicy: creditPolicyAgreed && truthfulnessAgreed,
+            agreedToCreditPolicy: true,
             applianceType: applianceId,
             brand: recognizedInfo.brand,
             modelName: recognizedInfo.modelName,
@@ -858,143 +842,6 @@ export function CapturePanel({
         </button>
       </div>
     </section>
-  );
-}
-
-function ConsentView({
-  creditPolicyAgreed,
-  truthfulnessAgreed,
-  onCancel,
-  onContinue,
-  setCreditPolicyAgreed,
-  setTruthfulnessAgreed,
-}: {
-  creditPolicyAgreed: boolean;
-  truthfulnessAgreed: boolean;
-  onCancel: () => void;
-  onContinue: () => void;
-  setCreditPolicyAgreed: (value: boolean) => void;
-  setTruthfulnessAgreed: (value: boolean) => void;
-}) {
-  const ready = creditPolicyAgreed && truthfulnessAgreed;
-
-  return (
-    <section className="flex h-full min-h-0 flex-col bg-cloud">
-      <div className="phone-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-4 pt-16">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-lgred">STEP 1. 촬영 전 확인</p>
-            <h2 className="mt-2 text-[24px] font-bold leading-tight text-ink">
-              진행하기 전에 확인해 주세요
-            </h2>
-          </div>
-          <button className="shrink-0 rounded-full px-2 py-1 text-sm font-bold text-slate-500" onClick={onCancel} type="button">
-            닫기
-          </button>
-        </div>
-
-        <div className="mt-5 rounded-[20px] bg-white p-2 shadow-sm">
-          <div className="flex items-start gap-3 rounded-[16px] p-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-lgred/10 text-lgred">
-              <AlertTriangle size={18} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-ink">보상 안내 및 동의</p>
-              <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                사진을 바탕으로 AI가 첫 견적을 계산해요. 수거 현장이나 자원 허브에서 확인한 실제 기기 상태에 따라 보상 크레딧이 조정될 수 있습니다.
-              </p>
-            </div>
-          </div>
-          <ConsentRow
-            checked={creditPolicyAgreed}
-            title="[필수] 크레딧 산정 및 안내 기준에 동의합니다."
-            description=""
-            onToggle={() => setCreditPolicyAgreed(!creditPolicyAgreed)}
-          />
-        </div>
-
-        <div className="mt-3 rounded-[20px] bg-white p-2 shadow-sm">
-          <div className="flex items-start gap-3 rounded-[16px] p-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-slate-100 text-slate-500">
-              <ShieldCheck size={18} />
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-ink">주의사항 및 동의</p>
-              <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                소중한 가전의 모습을 있는 그대로 정직하게 담아주세요. 허위 정보나 고의적인 훼손이 확인될 경우 서비스 이용이 제한될 수 있습니다.
-              </p>
-            </div>
-          </div>
-          <ConsentRow
-            checked={truthfulnessAgreed}
-            title="[필수] 실제 가전 상태와 다름없음을 확인합니다."
-            description=""
-            onToggle={() => setTruthfulnessAgreed(!truthfulnessAgreed)}
-          />
-        </div>
-
-        <div className="mt-3 rounded-[20px] bg-white p-2 shadow-sm">
-          <div className="flex items-start gap-3 rounded-[16px] p-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-lgred/10 text-lgred">
-            <ShieldCheck size={18} />
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-ink">촬영 가이드</p>
-            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-              가전의 전체 외관과 뒷면 라벨 스티커를 순서대로 촬영해 주세요. AI가 숨겨진 가치를 바로 분석해 드릴게요!
-            </p>
-          </div>
-        </div>
-      </div>
-      </div>
-
-      <div className="shrink-0 bg-cloud px-5 pb-5 pt-2">
-      <button
-        className="h-14 w-full rounded-[16px] bg-lgred text-sm font-bold text-white shadow-sm disabled:bg-slate-300 disabled:text-white"
-        disabled={!ready}
-        onClick={onContinue}
-        type="button"
-      >
-        촬영 시작하기
-      </button>
-      </div>
-    </section>
-  );
-}
-
-function ConsentRow({
-  checked,
-  title,
-  description,
-  onToggle,
-}: {
-  checked: boolean;
-  title: string;
-  description: string;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      className={`flex w-full items-start gap-3 rounded-[16px] p-3 text-left transition ${
-        checked ? "bg-lgred/5" : "bg-white"
-      }`}
-      onClick={onToggle}
-      type="button"
-    >
-      <span
-        className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-          checked ? "bg-lgred text-white" : "bg-slate-100 text-slate-400"
-        }`}
-      >
-        <CheckCircle2 size={14} />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-sm font-bold text-ink">{title}</span>
-        {description ? (
-          <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">{description}</span>
-        ) : null}
-      </span>
-    </button>
   );
 }
 

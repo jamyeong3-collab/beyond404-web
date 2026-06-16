@@ -1,19 +1,14 @@
 "use client";
 
+import { Service3DIcon } from "@/components/Service3DIcon";
 import type { SwapRequest } from "@/types/swap";
 import {
   AlertCircle,
-  BadgeCheck,
-  Bell,
-  CheckCircle2,
-  ClipboardCheck,
-  CreditCard,
   Home,
   Image as ImageIcon,
   Loader2,
   MessageSquare,
   Send,
-  Wrench,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -64,7 +59,7 @@ export function CreditPanel({
   return (
     <section className="flex min-h-full flex-col rounded-[28px] bg-white p-5 shadow-sm">
       <div className="flex items-center gap-2 text-sm font-bold text-lgred">
-        <BadgeCheck size={18} />
+        <Service3DIcon type="check" className="h-7 w-7 shrink-0" />
         STEP 5. 최종 검수 및 크레딧
       </div>
 
@@ -108,7 +103,7 @@ function PendingReviewView({
     <>
       <div className="mt-4 rounded-3xl border border-lgred/15 bg-lgred/5 p-5 text-center">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-lgred/10 text-lgred">
-          {loading ? <Loader2 className="animate-spin" size={30} /> : <ClipboardCheck size={30} />}
+          {loading ? <Loader2 className="animate-spin" size={30} /> : <Service3DIcon type="clipboard" className="h-16 w-16" />}
         </div>
         <p className="mt-4 text-xs font-semibold text-lgred">최종 검수 중</p>
         <h2 className="mt-2 text-2xl font-bold text-ink">수거품을 확인하고 있어요</h2>
@@ -118,9 +113,9 @@ function PendingReviewView({
       </div>
 
       <div className="mt-4 space-y-3">
-        <ReviewRow done icon={<CheckCircle2 size={17} />} title="수거 완료" description="가전이 LG 검수 프로세스로 이동했어요." />
-        <ReviewRow icon={<Wrench size={17} />} title="추가 검수 진행" description="외관, 부품 재사용 가능성, 원자재 가치를 확인합니다." />
-        <ReviewRow icon={<Bell size={17} />} title="ThinQ 알림 발송 예정" description="검수 완료 후 감정결과를 안내합니다." />
+        <ReviewRow done icon={<Service3DIcon type="check" className="h-9 w-9" />} title="수거 완료" description="가전이 LG 검수 프로세스로 이동했어요." />
+        <ReviewRow icon={<Service3DIcon type="search" className="h-9 w-9" />} title="추가 검수 진행" description="외관, 부품 재사용 가능성, 원자재 가치를 확인합니다." />
+        <ReviewRow icon={<Service3DIcon type="bell" className="h-9 w-9" />} title="ThinQ 알림 발송 예정" description="검수 완료 후 감정결과를 안내합니다." />
       </div>
 
       <button className="mt-auto h-12 w-full rounded-xl bg-lgred text-sm font-bold text-white" onClick={onReturnHome}>
@@ -143,9 +138,7 @@ function ReviewReadyView({
   return (
     <>
       <div className="mt-4 rounded-3xl border border-lgred/20 bg-lgred/10 p-6 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white text-lgred">
-          <Bell size={30} />
-        </div>
+        <Service3DIcon type="bell" className="mx-auto h-16 w-16" />
         <p className="mt-4 text-xs font-semibold text-lgred">검수 완료</p>
         <h2 className="mt-2 text-2xl font-bold text-ink">감정결과가 준비됐어요</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -154,9 +147,9 @@ function ReviewReadyView({
       </div>
 
       <div className="mt-4 space-y-3">
-        <ReviewRow done icon={<CheckCircle2 size={17} />} title="최종 검수 완료" description="수거품 확인이 끝났어요." />
-        <ReviewRow done icon={<ClipboardCheck size={17} />} title="감정 결과 생성" description="사진, 외관, 부품 상태를 반영했습니다." />
-        <ReviewRow done icon={<CreditCard size={17} />} title="크레딧 산정 완료" description="확정 금액 확인 후 크레딧을 받을 수 있어요." />
+        <ReviewRow done icon={<Service3DIcon type="check" className="h-9 w-9" />} title="최종 검수 완료" description="수거품 확인이 끝났어요." />
+        <ReviewRow done icon={<Service3DIcon type="clipboard" className="h-9 w-9" />} title="감정 결과 생성" description="사진, 외관, 부품 상태를 반영했습니다." />
+        <ReviewRow done icon={<Service3DIcon type="credit" className="h-9 w-9" />} title="크레딧 산정 완료" description="확정 금액 확인 후 크레딧을 받을 수 있어요." />
       </div>
 
       <button
@@ -185,9 +178,9 @@ function ReReviewPendingView({ onReturnHome }: { onReturnHome: () => void }) {
       </div>
 
       <div className="mt-4 space-y-3">
-        <ReviewRow done icon={<MessageSquare size={17} />} title="재검수 요청 접수" description="작성한 사유가 검수 담당자에게 전달됐어요." />
-        <ReviewRow icon={<ClipboardCheck size={17} />} title="결과 재확인" description="외관 상태, 부품 가치, 처리 비용을 다시 확인합니다." />
-        <ReviewRow icon={<Bell size={17} />} title="완료 알림 예정" description="재검수가 끝나면 ThinQ 홈에서 바로 확인할 수 있어요." />
+        <ReviewRow done icon={<Service3DIcon type="clipboard" className="h-9 w-9" />} title="재검수 요청 접수" description="작성한 사유가 검수 담당자에게 전달됐어요." />
+        <ReviewRow icon={<Service3DIcon type="search" className="h-9 w-9" />} title="결과 재확인" description="외관 상태, 부품 가치, 처리 비용을 다시 확인합니다." />
+        <ReviewRow icon={<Service3DIcon type="bell" className="h-9 w-9" />} title="완료 알림 예정" description="재검수가 끝나면 ThinQ 홈에서 바로 확인할 수 있어요." />
       </div>
 
       <button className="mt-auto h-12 w-full rounded-xl bg-lgred text-sm font-bold text-white" onClick={onReturnHome}>
@@ -204,9 +197,7 @@ function ReReviewReadyView({ onOpenResult }: { onOpenResult: () => void }) {
   return (
     <>
       <div className="mt-4 rounded-3xl border border-lgred/20 bg-lgred/10 p-6 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white text-lgred">
-          <CheckCircle2 size={32} />
-        </div>
+        <Service3DIcon type="check" className="mx-auto h-16 w-16" />
         <p className="mt-4 text-xs font-semibold text-lgred">재검수 완료</p>
         <h2 className="mt-2 text-2xl font-bold text-ink">재검수 결과가 준비됐어요</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -215,9 +206,9 @@ function ReReviewReadyView({ onOpenResult }: { onOpenResult: () => void }) {
       </div>
 
       <div className="mt-4 space-y-3">
-        <ReviewRow done icon={<MessageSquare size={17} />} title="요청 사유 확인" description="고객이 작성한 내용을 기준으로 다시 검토했습니다." />
-        <ReviewRow done icon={<ClipboardCheck size={17} />} title="재검수 완료" description="외관과 부품 가치를 한 번 더 확인했습니다." />
-        <ReviewRow done icon={<CreditCard size={17} />} title="최종 크레딧 유지" description="확정된 크레딧 결과를 다시 안내합니다." />
+        <ReviewRow done icon={<Service3DIcon type="clipboard" className="h-9 w-9" />} title="요청 사유 확인" description="고객이 작성한 내용을 기준으로 다시 검토했습니다." />
+        <ReviewRow done icon={<Service3DIcon type="check" className="h-9 w-9" />} title="재검수 완료" description="외관과 부품 가치를 한 번 더 확인했습니다." />
+        <ReviewRow done icon={<Service3DIcon type="credit" className="h-9 w-9" />} title="최종 크레딧 유지" description="확정된 크레딧 결과를 다시 안내합니다." />
       </div>
 
       <button className="mt-auto h-12 w-full rounded-xl bg-lgred text-sm font-bold text-white" onClick={onOpenResult}>
@@ -298,9 +289,7 @@ function CreditIssuedView({
   return (
     <>
       <div className="mt-4 rounded-3xl border border-lgred/20 bg-lgred/10 p-6 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white text-lgred">
-          <CreditCard size={32} />
-        </div>
+        <Service3DIcon type="credit" className="mx-auto h-16 w-16" />
         <p className="mt-4 text-xs font-semibold text-lgred">크레딧 발급 완료</p>
         <h2 className="mt-2 text-2xl font-bold text-ink">₹{amount.toLocaleString()} 크레딧을 받았어요</h2>
         <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -311,19 +300,19 @@ function CreditIssuedView({
       <div className="mt-4 space-y-3">
         <ReviewRow
           done
-          icon={<CheckCircle2 size={17} />}
+          icon={<Service3DIcon type="check" className="h-9 w-9" />}
           title="ThinQ 크레딧 지갑에 저장"
           description="발급 금액은 내 크레딧 내역에 자동으로 반영됩니다."
         />
         <ReviewRow
           done
-          icon={<CreditCard size={17} />}
+          icon={<Service3DIcon type="credit" className="h-9 w-9" />}
           title="LG 제품 구매 시 사용"
           description="결제 단계에서 보유 크레딧을 선택하면 구매 금액에서 차감됩니다."
         />
         <ReviewRow
           done
-          icon={<Bell size={17} />}
+          icon={<Service3DIcon type="bell" className="h-9 w-9" />}
           title="사용 기한 알림"
           description="크레딧 만료 전 ThinQ 알림으로 다시 안내받을 수 있습니다."
         />
@@ -418,11 +407,7 @@ function ReviewRow({
 }) {
   return (
     <div className="flex gap-3 rounded-2xl bg-slate-50 p-3">
-      <span
-        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-          done ? "bg-lgred text-white" : "bg-white text-lgred"
-        }`}
-      >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center">
         {icon}
       </span>
       <div>

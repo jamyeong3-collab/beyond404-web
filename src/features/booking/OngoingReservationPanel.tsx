@@ -1,4 +1,6 @@
-import { CalendarCheck, ChevronRight, Clock, MapPin, Truck } from "lucide-react";
+import { Calendar3DIcon } from "@/components/Calendar3DIcon";
+import { Service3DIcon } from "@/components/Service3DIcon";
+import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 import type { BookingPurpose } from "./BookingPanel";
 
@@ -53,7 +55,7 @@ export function OngoingReservationPanel({
   return (
     <section className="flex h-full flex-col rounded-[28px] bg-white p-4 shadow-sm">
       <div className="flex items-center gap-2 text-[13px] font-bold text-lgred">
-        <CalendarCheck size={18} />
+        <Calendar3DIcon className="h-6 w-6 shrink-0" />
         {isInstallation ? "진행 중인 설치 예약이에요" : "진행 중인 예약이에요"}
       </div>
 
@@ -67,9 +69,9 @@ export function OngoingReservationPanel({
       </div>
 
       <div className="mt-4 space-y-3">
-        <InfoRow icon={<Clock size={18} />} title="예약 시간이에요" description={reservationLabel || "예약 정보가 없어요"} />
+        <InfoRow icon={<Service3DIcon type="clock" className="h-9 w-9" />} title="예약 시간이에요" description={reservationLabel || "예약 정보가 없어요"} />
         <InfoRow
-          icon={<MapPin size={18} />}
+          icon={<Service3DIcon type="location" className="h-9 w-9" />}
           title={isInstallation ? "설치 위치예요" : "수거 위치예요"}
           description={
             reservationAddress || (isInstallation ? "입력한 설치 주소를 불러오고 있어요." : "입력한 수거 주소를 불러오고 있어요.")
@@ -79,7 +81,7 @@ export function OngoingReservationPanel({
 
       <div className="mt-4">
         <StageCard
-          icon={<Truck size={18} />}
+          icon={<Service3DIcon type="truck" className="h-10 w-10" />}
           stepLabel="STEP 4"
           title={pickupCompleted ? (isInstallation ? "설치와 수거가 완료됐어요" : "수거 및 처리가 완료됐어요") : "크루 이동을 확인해요"}
           description={trackingDescription}
@@ -138,7 +140,7 @@ function StageCard({
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-lgred/10 text-lgred">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center">
           {icon}
         </span>
         <div className="min-w-0 flex-1">
@@ -172,7 +174,7 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-4">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-lgred/10 text-lgred">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center">
         {icon}
       </span>
       <div>

@@ -2,7 +2,8 @@
 
 import { getTracking } from "@/lib/api";
 import type { SwapRequest } from "@/types/swap";
-import { MapPin, Navigation, Phone, ShieldCheck, Star, Truck, Warehouse } from "lucide-react";
+import { Service3DIcon } from "@/components/Service3DIcon";
+import { Phone, Star } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -325,9 +326,7 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
                   src={viewModel.crewProfile.photoUrl}
                 />
               ) : (
-                <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-lgred">
-                  <Truck size={22} />
-                </span>
+                <Service3DIcon type="truck" className="h-14 w-14 shrink-0" />
               )}
               <div>
                 <p className="text-xs font-bold text-lgred">배정 크루</p>
@@ -369,25 +368,25 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
 
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <InfoCard
-              icon={<Navigation size={16} />}
+              icon={<Service3DIcon type="navigation" className="h-9 w-9" />}
               title="크루 현재 위치"
               value={viewModel.crewAddress}
               caption={`수거지까지 ${viewModel.pickupDistanceLabel} · ${viewModel.locationMessage}`}
             />
             <InfoCard
-              icon={<MapPin size={16} />}
+              icon={<Service3DIcon type="location" className="h-9 w-9" />}
               title="수거 위치"
               value={viewModel.pickupAddress}
               caption={`크루와 거리 ${viewModel.pickupDistanceLabel}`}
             />
             <InfoCard
-              icon={<Truck size={16} />}
+              icon={<Service3DIcon type="truck" className="h-9 w-9" />}
               title="예상 소요 시간"
               value={viewModel.routeDurationLabel}
               caption={`현재 경로 기준 거리 ${viewModel.routeDistanceLabel}`}
             />
             <InfoCard
-              icon={<Warehouse size={16} />}
+              icon={<Service3DIcon type="warehouse" className="h-9 w-9" />}
               title="처리 허브"
               value={viewModel.processingCenter?.label ?? "배정 후 안내"}
               caption={`크루와 거리 ${viewModel.hubDistanceLabel}`}
@@ -397,7 +396,7 @@ export function TrackingPanel({ swapRequest, onNext }: TrackingPanelProps) {
 
         <div className="mt-4 rounded-[26px] border border-slate-200 bg-white p-4">
           <div className="flex items-center gap-2 text-[13px] font-bold text-ink">
-            <ShieldCheck size={16} className="text-lgred" />
+            <Service3DIcon type="check" className="h-7 w-7 shrink-0" />
             수거 진행 상태
           </div>
           <div className="mt-4 space-y-4">
