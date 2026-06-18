@@ -714,6 +714,7 @@ export default function HomePage() {
 
   const isSwapIntroScreen = swapItOpened && swapStep === "intro";
   const isSwapCaptureScreen = Boolean(demoUser) && swapItOpened && swapStep === "capture" && !marketOpened;
+  const isSwapAnalyzingScreen = Boolean(demoUser) && swapItOpened && swapStep === "analyzing" && !marketOpened;
   const phoneViewportBackgroundClass =
     showSplash || !thinQOpened
       ? "bg-[#dfeec1]"
@@ -723,16 +724,18 @@ export default function HomePage() {
           ? "bg-white"
           : isSwapIntroScreen
             ? "swapit-pattern-bg"
-            : isSwapCaptureScreen
+            : isSwapCaptureScreen || isSwapAnalyzingScreen
               ? "bg-[#111318]"
               : swapItOpened
                 ? "bg-white"
                 : "bg-cloud";
 
   return (
-    <main className="flex min-h-[100dvh] justify-center bg-cloud">
-      <section className={`relative min-h-[100dvh] w-full max-w-[430px] ${phoneViewportBackgroundClass}`}>
-        <div id="swapit-phone-viewport" className={`relative h-[100dvh] w-full overflow-hidden ${phoneViewportBackgroundClass}`}>
+    <main className="flex min-h-[100dvh] justify-center bg-cloud md:items-center md:bg-[#0b0b0d] md:py-8">
+      <div className="relative w-full max-w-[430px] md:w-auto md:max-w-none md:rounded-[58px] md:border-[14px] md:border-[#0f0f11] md:bg-[#0f0f11] md:shadow-[0_40px_90px_rgba(0,0,0,0.55)]">
+        <div className="pointer-events-none absolute left-1/2 top-[10px] z-50 hidden h-[26px] w-[112px] -translate-x-1/2 rounded-full bg-black md:block" />
+        <section className={`relative min-h-[100dvh] w-full overflow-hidden md:min-h-0 md:h-[min(844px,calc(100dvh-64px))] md:aspect-[390/844] md:rounded-[44px] ${phoneViewportBackgroundClass}`}>
+          <div id="swapit-phone-viewport" className={`relative h-[100dvh] w-full overflow-hidden md:h-full ${phoneViewportBackgroundClass}`}>
           {showSplash ? (
             <ThinQSplashScreen />
           ) : thinQOpened ? (
@@ -740,9 +743,11 @@ export default function HomePage() {
               {isSwapIntroScreen ? (
                 <IndianPatternOverlay className="z-0" />
               ) : null}
-              <PhoneStatusBar
-                className={isSwapIntroScreen ? "bg-transparent" : phoneViewportBackgroundClass}
-              />
+              {!isSwapAnalyzingScreen ? (
+                <PhoneStatusBar
+                  className={isSwapIntroScreen ? "bg-transparent" : phoneViewportBackgroundClass}
+                />
+              ) : null}
               {!demoUser ? (
                 <DemoLoginScreen
                   onBack={() => {
@@ -893,7 +898,8 @@ export default function HomePage() {
               <ThinQSplashScreen />
             )}
           </div>
-      </section>
+        </section>
+      </div>
     </main>
   );
 }
@@ -1831,6 +1837,7 @@ function SwapItFeatureScreen(props: {
         props.step === "intro" ? "overflow-hidden" : ""
       }`}
     >
+      {props.step !== "analyzing" ? (
       <header className="relative z-20 px-4 pb-3">
         <div className="mb-3 flex items-center justify-between">
           <button
@@ -1863,6 +1870,17 @@ function SwapItFeatureScreen(props: {
           <OngoingReservationHeader bookingPurpose={props.bookingPurpose} step={props.step} />
         ) : null}
       </header>
+      ) : null}
+
+      {props.step === "analyzing" ? (
+        <button
+          className="absolute right-4 top-[max(14px,env(safe-area-inset-top))] z-40 h-9 rounded-full bg-white/10 px-4 text-xs font-bold text-white ring-1 ring-white/25 backdrop-blur-sm"
+          onClick={props.onNextScreen}
+          type="button"
+        >
+          넘어가기
+        </button>
+      ) : null}
 
       <div
         className={getContentClassName(props.step)}
@@ -2160,7 +2178,7 @@ function getContentClassName(step: SwapStep) {
   }
 
   if (step === "analyzing") {
-    return "relative z-10 flex-1 overflow-hidden px-4 pb-4";
+    return "relative z-10 min-h-0 flex-1 overflow-hidden p-3";
   }
 
   return "phone-scroll relative z-10 flex-1 overflow-y-auto px-4 pb-4";
@@ -2331,7 +2349,6 @@ function SwapIt3DIcon({ featured = false }: { featured?: boolean }) {
           <stop offset="1" stopColor="#b0003a" />
         </linearGradient>
       </defs>
-      <ellipse cx="24" cy="42.5" rx="13" ry="2.4" fill="rgba(60,20,45,0.22)" />
       <path d="M13 16.5 24 10l11 6.5v14L24 37l-11-6.5z" fill="url(#swapit-box)" stroke="#bd2b61" strokeWidth="0.8" />
       <path d="M13 16.5 24 23l11-6.5" fill="none" stroke="#ffffff" strokeWidth="1.2" opacity="0.7" />
       <path d="M24 23v14" stroke="#b83769" strokeWidth="0.9" opacity="0.55" />
@@ -2344,7 +2361,6 @@ function SwapIt3DIcon({ featured = false }: { featured?: boolean }) {
         fill="url(#swapit-arrow)"
         opacity="0.9"
       />
-      <path d="M15.2 15.8 24 10.8l8.8 5.1" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" opacity="0.45" />
     </svg>
   );
 }

@@ -713,12 +713,17 @@ export function PurchasePanel({
         수거 신청한 {preferredCategoryLabel}와 같은 카테고리를 먼저 보여드려요. 다른 가전 카테고리도 함께 비교할 수 있어요.
       </p>
 
-      <div className="mt-4 rounded-3xl bg-[#202632] px-4 py-4 text-white">
-        <p className="text-[13px] font-semibold leading-5 text-white/65">기본 예상 보상이에요</p>
-        <p className="mt-1 text-[20px] font-bold leading-6">{estimatedCredit.toLocaleString()}원</p>
-        <p className="mt-2 text-[13px] font-medium leading-5 text-white/70">
-          최종 혜택은 선택한 제품 가격대에 따라 달라져요.
-        </p>
+      <div className="mt-4 rounded-3xl border border-lgred/10 bg-[linear-gradient(135deg,#fff7fa,#ffffff_58%,#f8fafc)] p-4 shadow-sm">
+        <div className="flex items-start gap-3">
+          <RewardCoinIcon />
+          <div className="min-w-0 flex-1">
+            <p className="whitespace-nowrap text-[13px] font-bold leading-5 text-ink">기본 예상 보상이에요</p>
+            <p className="mt-1 whitespace-nowrap text-[24px] font-bold leading-7 text-lgred">{estimatedCredit.toLocaleString()}원</p>
+            <p className="mt-2 text-[11px] font-semibold leading-4 text-slate-500">
+              제품을 선택하면 가격대에 따라 추가 혜택이 함께 계산돼요.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="mt-4">
@@ -859,6 +864,21 @@ export function PurchasePanel({
         />
       ) : null}
     </section>
+  );
+}
+
+function RewardCoinIcon() {
+  return (
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#fff4d6] ring-1 ring-[#f4d27c]">
+      <svg viewBox="0 0 40 40" className="h-8 w-8" aria-hidden="true">
+        <ellipse cx="20" cy="27" rx="10" ry="4" fill="#f1b72f" opacity="0.65" />
+        <path d="M10 23.5v3.3c0 2.4 4.5 4.3 10 4.3s10-1.9 10-4.3v-3.3" fill="#ffd65d" />
+        <ellipse cx="20" cy="23.5" rx="10" ry="4.3" fill="#ffeaa6" stroke="#d9a41f" strokeWidth="1.2" />
+        <path d="M13.2 19.2v3.5c0 2.1 3.1 3.8 6.8 3.8s6.8-1.7 6.8-3.8v-3.5" fill="#ffc73d" />
+        <ellipse cx="20" cy="19.2" rx="6.8" ry="3.8" fill="#fff1bd" stroke="#d9a41f" strokeWidth="1.1" />
+        <path d="M17.3 18.4c1.3-.7 4.1-.7 5.4 0" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" opacity="0.9" />
+      </svg>
+    </span>
   );
 }
 

@@ -44,9 +44,7 @@ export function Service3DIcon({
             <stop offset="1" stopColor="#8f002f" />
           </linearGradient>
         </defs>
-        <ellipse cx="24" cy="43.5" rx="13.5" ry="2.6" fill="rgba(35,45,70,0.24)" />
         <rect x="7" y="5" width="34" height="37" rx="13" fill={`url(#${tileId})`} stroke="#f1c7d6" strokeWidth="1" />
-        <path d="M12 11c5-4 17-5 24 2" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" opacity="0.55" />
         <IconGlyph type={type} accentId={accentId} />
       </svg>
     </span>

@@ -9,9 +9,7 @@ type ApplianceIconId =
   | "tv"
   | "air_purifier";
 
-const SHADOW = (
-  <ellipse cx="24" cy="44.5" rx="13.5" ry="2.8" fill="rgba(35,45,70,0.34)" />
-);
+const SHADOW = null;
 
 function WashingMachine3D() {
   return (
