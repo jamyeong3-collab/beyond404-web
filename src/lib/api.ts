@@ -300,3 +300,19 @@ export function advanceDeliveryTracking(id: number) {
     method: "POST",
   });
 }
+
+export function submitCrewReview(
+  id: number,
+  payload: {
+    rating: number;
+    comment?: string;
+  },
+) {
+  return request<SwapRequest>(`/api/swap-requests/${id}/crew-review`, {
+    method: "POST",
+    body: JSON.stringify({
+      rating: payload.rating,
+      comment: payload.comment?.trim() || "",
+    }),
+  });
+}

@@ -85,6 +85,11 @@ export type SwapRequest = {
     rating: number;
     reviewSummary: string[];
   } | null;
+  crewReview?: {
+    rating: number;
+    comment?: string | null;
+    createdAt: string;
+  } | null;
   dispatchInfo?: {
     alertMessage: string;
     matchScore: number;

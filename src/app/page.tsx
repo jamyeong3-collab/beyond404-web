@@ -2345,6 +2345,7 @@ function SwapItFeatureScreen(props: {
             estimatedCredit={Math.round(((props.swapRequest?.preValuation.minEstimatedValue ?? 0) + (props.swapRequest?.preValuation.maxEstimatedValue ?? 0)) / 2)}
             preferredCategoryId={props.selectedAppliance}
             selectedProductId={props.selectedPurchaseProductId}
+            swapRequestId={props.swapRequest?.id ?? null}
             onSelectProduct={(productId) => props.onSelectPurchaseProduct(productId)}
             onContinueToBooking={props.onOpenInstallationBooking}
           />
